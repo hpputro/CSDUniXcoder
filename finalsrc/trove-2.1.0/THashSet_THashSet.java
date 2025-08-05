@@ -1,0 +1,3 @@
+public THashSet() {
+        super();
+    }

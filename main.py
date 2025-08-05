@@ -148,9 +148,6 @@ trainer.train()
 final_predictions = trainer.predict(val_dataset)
 preds = np.argmax(final_predictions.predictions, axis=-1)
 true_labels = val_data['label'].values
-#np.save("val_logits.npy", final_predictions.predictions)
-#np.save("val_labels.npy", val_data['label'].values)
-#print("Output shape:", final_predictions.predictions.shape)
 
 target_names=["0", "1"]
 report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
