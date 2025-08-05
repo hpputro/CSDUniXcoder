@@ -1,3 +1,0 @@
-public boolean getItemVisible(int series, int item) {
-        return isSeriesVisible(series);
-    }

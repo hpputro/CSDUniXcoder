@@ -1,3 +1,0 @@
-public Font getTitleFont() {
-        return this.titleFont;
-    }
