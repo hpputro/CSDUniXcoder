@@ -1,0 +1,3 @@
+public void setShapesFilled(boolean filled) {
+        setShapesFilled(BooleanUtilities.valueOf(filled));
+    }

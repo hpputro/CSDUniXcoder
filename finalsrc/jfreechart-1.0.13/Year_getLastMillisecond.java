@@ -1,0 +1,3 @@
+public long getLastMillisecond() {
+        return this.lastMillisecond;
+    }
