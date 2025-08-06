@@ -141,17 +141,22 @@ def plot_metrics(df):
     plt.tight_layout()
     plt.show()
 
-def plot_over(df1, df2, df3, str):
+def plot_over(df1, df2, df3, df4, str, max_epochs=13):
+    df1 = df1[df1['epoch'] <= max_epochs]
+    df2 = df2[df2['epoch'] <= max_epochs]
+    df3 = df3[df3['epoch'] <= max_epochs]
+    df4 = df4[df4['epoch'] <= max_epochs]
+
     plt.figure(figsize=(8,5))
-    plt.plot(df1['epoch'], df1[str], marker='^', label='5', color='#1565C0')
-    #plt.plot(df2['epoch'], df2[str], marker='v', label='7', color='#2E7D32')
-    plt.plot(df3['epoch'], df3[str], marker='s', label='8', color='#FFB300')
-    #plt.plot(df4['epoch'], df4[str], marker='d', label='10', color='#B71C1C')
+    plt.plot(df1['epoch'], df1[str], marker='^', label='0.0', color='#C5776D')
+    plt.plot(df2['epoch'], df2[str], marker='v', label='0.1', color='#7FAEC5')
+    plt.plot(df3['epoch'], df3[str], marker='s', label='0.2', color='#92BF9E')
+    #plt.plot(df4['epoch'], df4[str], marker='d', label='3e-5', color='#C5776D')
     plt.xlabel('Epoch')
     plt.ylabel(str)
-    plt.legend()
+    legend = plt.legend(title='Label Smoothing')
     plt.grid(True, linestyle='--', alpha=0.5)
-    plt.xticks([x for x in range(int(min(df1['epoch'])), int(max(df1['epoch']))+1) if x % 2 == 0])
+    plt.xticks([x for x in range(int(min(df1['epoch'])), int(max(df1['epoch']))+1) if x % 2 == 0 and x <= max_epochs])
     plt.tight_layout()
     plt.show()
 
@@ -161,17 +166,35 @@ df8 = extract_from_json("remote/250723b_79.json")
 df5 = extract_from_json("remote/250723a_84.json")
 df10 = extract_from_json("remote/250722c_79.json")
 plot_over(df5, df7, df8, df10, 'eval_accuracy')
-'''
 
-
-'''
-df1 = extract_from_json("remote/250723a_84.json")
+#learning rate
+df1 = extract_from_text("remote/250730b_77.txt")
 df2 = extract_from_json("remote/250731a_87.json")
-df3 = extract_from_json("remote/250731b_85.json")
-plot_over(df1, df2, df3, 'eval_accuracy')
+df3 = extract_from_json("remote/250723a_84.json")
+df4 = extract_from_json("remote/250730b_87.json")
+plot_over(df1, df2, df3, df4, 'eval_accuracy')
+plot_over(df1, df2, df3, df4, 'eval_loss')
+
+#warmup steps
+df1 = extract_from_json("remote/250805b_82.json")
+df2 = extract_from_json("remote/250805a_85.json")
+df3 = extract_from_json("remote/250723a_84.json")
+df4 = extract_from_text("remote/250730c_85.txt")
+plot_over(df1, df2, df3, df4, 'eval_accuracy')
+plot_over(df1, df2, df3, df4, 'eval_loss')
 '''
 
+#label smoothing
+df1 = extract_from_json("remote/250723a_84.json")
+df2 = extract_from_json("remote/250730a_85.json")
+df3 = extract_from_json("remote/250728_85.json")
+df4 = extract_from_json("remote/250723a_84.json")
+plot_over(df1, df2, df3, df4, 'eval_accuracy')
+plot_over(df1, df2, df3, df4, 'eval_loss')
+
+'''
 df = extract_from_json("remote/250723a_84.json")
 plot_eval(df)
 plot_metrics(df)
+'''
 
