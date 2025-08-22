@@ -103,18 +103,17 @@ val_data = dataset.iloc[split_index:].reset_index(drop=True)
 print(train_data['label'].value_counts())
 print(val_data['label'].value_counts())
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model_name = "microsoft/unixcoder-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name, 
-    num_labels=2, problem_type="single_label_classification")
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-print("Device: "+device+"\n")
 train_dataset = CodeDataset(train_data, tokenizer, device)
 val_dataset = CodeDataset(val_data, tokenizer, device)
 all_dataset = CodeDataset(dataset, tokenizer, device)
+print("Device: "+device+"\n")
 
+model = AutoModelForSequenceClassification.from_pretrained(model_name, 
+    num_labels=2, problem_type="single_label_classification")
+model.to(device)
 training_args = TrainingArguments(
     output_dir="./results",
     overwrite_output_dir=True,
