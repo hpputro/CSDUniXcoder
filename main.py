@@ -104,7 +104,7 @@ print(train_data['label'].value_counts())
 print(val_data['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/unixcoder-base"
+model_name = "microsoft/codebert-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 train_dataset = CodeDataset(train_data, tokenizer, device)
 val_dataset = CodeDataset(val_data, tokenizer, device)

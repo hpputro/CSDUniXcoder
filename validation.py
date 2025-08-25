@@ -111,7 +111,7 @@ val_dataset = CodeDataset(val_data, tokenizer, device)
 all_dataset = CodeDataset(dataset, tokenizer, device)
 print("Device: "+device+"\n")
 
-checkpoint_path = "./results/checkpoint-130"
+checkpoint_path = "./remote/250825_checkpoint-130"
 model = AutoModelForSequenceClassification.from_pretrained(checkpoint_path,
 #model = AutoModelForSequenceClassification.from_pretrained(model_name, 
     num_labels=2, problem_type="single_label_classification")
