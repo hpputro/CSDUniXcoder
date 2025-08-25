@@ -141,22 +141,27 @@ def plot_metrics(df):
     plt.tight_layout()
     plt.show()
 
-def plot_over(df1, df2, df3, df4, str, max_epochs=13):
-    df1 = df1[df1['epoch'] <= max_epochs]
-    df2 = df2[df2['epoch'] <= max_epochs]
-    df3 = df3[df3['epoch'] <= max_epochs]
-    df4 = df4[df4['epoch'] <= max_epochs]
+def plot_over(dfs, metric, max_epochs=0):
+    if max_epochs != 0:
+        dfs = [df[df['epoch'] <= max_epochs] for df in dfs]
 
     plt.figure(figsize=(8,5))
-    plt.plot(df1['epoch'], df1[str], marker='^', label='0.0', color='#C5776D')
-    plt.plot(df2['epoch'], df2[str], marker='v', label='0.1', color='#7FAEC5')
-    plt.plot(df3['epoch'], df3[str], marker='s', label='0.2', color='#92BF9E')
-    #plt.plot(df4['epoch'], df4[str], marker='d', label='3e-5', color='#C5776D')
+    markers = ['^', 'v', 's', 'd', 'x']
+    #colors = ['#C5776D', '#7FAEC5', '#92BF9E', '#D2B87E', '#A783A7']
+    colors = ['#7FAEC5', '#92BF9E', '#C5776D', '#D2B87E', '#92BF9E']
+    labels = ['linear', 'polynomial', 'cosine', 'constant', 'constant with warmup'] 
+
+    for i, df in enumerate(dfs):
+        plt.plot(df['epoch'], df[metric], marker=markers[i], label=labels[i], color=colors[i])
+
     plt.xlabel('Epoch')
-    plt.ylabel(str)
-    legend = plt.legend(title='Label Smoothing')
+    plt.ylabel(metric)
+    plt.legend(title='Scheduler Type')
     plt.grid(True, linestyle='--', alpha=0.5)
-    plt.xticks([x for x in range(int(min(df1['epoch'])), int(max(df1['epoch']))+1) if x % 2 == 0 and x <= max_epochs])
+    if max_epochs != 0 and len(dfs) > 0 and not dfs[0].empty:
+        plt.xticks([x for x in range(int(min(dfs[0]['epoch'])), int(max(dfs[0]['epoch']))+1) if x <= max_epochs])
+    else:
+        plt.xticks([x for x in range(int(min(dfs[0]['epoch'])), int(max(dfs[0]['epoch']))+1)])
     plt.tight_layout()
     plt.show()
 
@@ -184,13 +189,21 @@ plot_over(df1, df2, df3, df4, 'eval_accuracy')
 plot_over(df1, df2, df3, df4, 'eval_loss')
 '''
 
-#label smoothing
-df1 = extract_from_json("remote/250723a_84.json")
-df2 = extract_from_json("remote/250730a_85.json")
-df3 = extract_from_json("remote/250728_85.json")
-df4 = extract_from_json("remote/250723a_84.json")
-plot_over(df1, df2, df3, df4, 'eval_accuracy')
-plot_over(df1, df2, df3, df4, 'eval_loss')
+df_files = [
+    "remote/250822c_85.json",
+    "remote/250723a_84.json",
+    "remote/250823_85.txt"
+]
+
+dfs = []
+for file in df_files:
+    if file.endswith(".txt"):
+        dfs.append(extract_from_text(file))
+    elif file.endswith(".json"):
+        dfs.append(extract_from_json(file))
+
+plot_over(dfs, 'eval_accuracy')
+plot_over(dfs, 'eval_loss')
 
 '''
 df = extract_from_json("remote/250723a_84.json")
