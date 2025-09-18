@@ -13,7 +13,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 
-MAX_LENGTH: int = 512
+MAX_LENGTH: int = 1024
 FILEDS: str = 'switch_statements_1024.csv'
 
 from transformers import TrainerCallback
@@ -104,7 +104,7 @@ print(train_data['label'].value_counts())
 print(val_data['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/codebert-base"
+model_name = "microsoft/unixcoder-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 train_dataset = CodeDataset(train_data, tokenizer, device)
 val_dataset = CodeDataset(val_data, tokenizer, device)
