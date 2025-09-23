@@ -190,9 +190,11 @@ plot_over(df1, df2, df3, df4, 'eval_loss')
 '''
 
 df_files = [
-    "remote/250822c_85.json",
+    "remote/250822a_76.json",
+    "remote/250730b_77.txt",
+    "remote/250731a_87.json",
     "remote/250723a_84.json",
-    "remote/250823_85.txt"
+    "remote/250730b_87.json",
 ]
 
 dfs = []
@@ -202,8 +204,8 @@ for file in df_files:
     elif file.endswith(".json"):
         dfs.append(extract_from_json(file))
 
-plot_over(dfs, 'eval_accuracy')
-plot_over(dfs, 'eval_loss')
+plot_over(dfs, 'train_accuracy')
+plot_over(dfs, 'loss')
 
 '''
 df = extract_from_json("remote/250723a_84.json")

@@ -19,16 +19,10 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 
 # JRip (RIPPER) via wittgenstein (opsional)
-HAS_WITTGENSTEIN = False
-try:
-    import wittgenstein as lw
-    HAS_WITTGENSTEIN = True
-except Exception:
-    pass
-
 # -------------------------------------------------------
 # 1) Load & prepare data
 # -------------------------------------------------------
+HAS_WITTGENSTEIN = False
 CSV_PATH = "switch_statements_structured.csv"  # ganti jika berbeda
 assert Path(CSV_PATH).exists(), f"CSV tidak ditemukan: {CSV_PATH}"
 
@@ -182,12 +176,3 @@ summary_df = pd.DataFrame(results).sort_values(by="test_accuracy", ascending=Fal
 print("\n" + "#"*80)
 print("RINGKASAN HASIL (urut akurasi test menurun):")
 print(summary_df[["model", "test_accuracy", "test_precision_macro", "test_recall_macro", "test_f1_macro"]])
-
-out_csv = "structured_models_results.csv"
-summary_df.to_csv(out_csv, index=False)
-print(f"\nHasil ringkasan disimpan ke: {out_csv}")
-
-# (Opsional) Simpan confusion matrix masing-masing model ke file terpisah
-for row in results:
-    cm_path = f"cm_{row['model'].replace(' ', '_').replace('(', '').replace(')', '')}.csv"
-    pd.DataFrame(row["confusion_matrix"]).to_csv(cm_path, header=False, index=False)
