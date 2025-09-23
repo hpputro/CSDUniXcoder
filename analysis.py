@@ -6,7 +6,7 @@ print("importing libraries")
 import matplotlib.pyplot as plt
 
 MAX_LENGTH: int = 1024
-FILEDS: str = 'switch_statements_1024.csv'
+FILEDS: str = 'switch_statements.csv'
 
 from torch.utils.data import Dataset
 class CodeDataset(Dataset):
@@ -63,26 +63,19 @@ val_data = dataset.iloc[split_index:].reset_index(drop=True)
 bin_size = 100
 max_token = int(dataset['length'].max())
 bins = np.arange(0, max_token + bin_size, bin_size)
-
-# Hitung histogram
 counts, edges = np.histogram(dataset['length'], bins=bins)
 bin_centers = [(edges[i] + edges[i+1]) / 2 for i in range(len(edges)-1)]
 
-# Plot bar chart
+# Plot bar chart with vertical line at x=1024
 plt.figure(figsize=(10,6))
 plt.bar(bin_centers, counts, width=bin_size * 0.9, color='#81957F')
 plt.xlabel("Token Count")
 plt.ylabel("Number of Files")
 plt.title("File Count per 100 Token Range")
-
-# ⬅⬅⬅ Label X: pakai range tetap (200, 400, 600, dst.)
 xtick_vals = np.arange(200, max(bin_centers)+1, 200)
 xtick_labels = [str(int(v)) for v in xtick_vals]
 plt.xticks(xtick_vals, xtick_labels, rotation=45)
-
-# Garis vertikal di x=1024
 plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
-
 plt.tight_layout()
 plt.show()
 
@@ -112,9 +105,8 @@ bins = range(0, int(dataset['length'].max()) + 100, 100)
 labels = [0, 1]
 colors = ['#A9C6D9', '#E9CBAA']
 label_names = {0: "Clean Code", 1: "Smell Code"}
-
-# Prepare data for each label
 data_by_label = [dataset[dataset['label'] == l]['length'] for l in labels]
+plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
 
 plt.hist(
     data_by_label,
