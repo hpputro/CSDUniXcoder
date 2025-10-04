@@ -113,13 +113,30 @@ def plot_eval(df):
     plt.tight_layout()
     plt.show()
 
-def plot_loss(df):
+def plot_trainval(df):
     plt.figure(figsize=(8,5))
-    plt.plot(df['epoch'], df['loss'], marker='o', label='Train Loss', color='#1565C0')
-    plt.plot(df['epoch'], df['eval_loss'], marker='s', label='Validation Loss', color='#FFB300')
+    plt.plot(df['epoch'], df['train_accuracy'], marker='^', label='Train Accuracy', color='#B490D1')
+    plt.plot(df['epoch'], df['eval_accuracy'], marker='v', label='Validation Accuracy', color='#D04F4F')
+    plt.plot(df['epoch'], df['loss'], marker='<', label='Train Loss', color='#D2B87E')
+    plt.plot(df['epoch'], df['eval_loss'], marker='>', label='Validation Loss', color='#92BF9E')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Train vs Validation Loss per Epoch')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.xticks([x for x in range(int(min(df['epoch'])), int(max(df['epoch']))+1) if x % 2 == 0])
+    plt.tight_layout()
+    plt.show()
+
+def plot_metrics(df):
+    plt.figure(figsize=(8,5))
+    plt.plot(df['epoch'], df['eval_precision'], marker='^', label='Precision', color='#5D7080')
+    plt.plot(df['epoch'], df['eval_recall'], marker='v', label='Recall', color='#2A3B36')
+    plt.plot(df['epoch'], df['eval_f1'], marker='s', label='F1 Score', color='#B58B6A')
+    plt.plot(df['epoch'], df['eval_accuracy'], marker='d', label='Accuracy', color='#8A5C5C')
+    plt.xlabel('Epoch')
+    plt.ylabel('Evaluation Metrics')
+    plt.title('Accuracy vs Precision vs Recall vs F1 Score per Epoch')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.xticks([x for x in range(int(min(df['epoch'])), int(max(df['epoch']))+1) if x % 2 == 0])
@@ -146,17 +163,21 @@ def plot_over(dfs, metric, max_epochs=0):
         dfs = [df[df['epoch'] <= max_epochs] for df in dfs]
 
     plt.figure(figsize=(8,5))
-    markers = ['^', 'v', 's', 'd', 'x']
-    #colors = ['#C5776D', '#7FAEC5', '#92BF9E', '#D2B87E', '#A783A7']
-    colors = ['#7FAEC5', '#92BF9E', '#C5776D', '#D2B87E', '#92BF9E']
-    labels = ['linear', 'polynomial', 'cosine', 'constant', 'constant with warmup'] 
-
+    markers = ['d', 'o', 'x', '^', 'v']
+    colors = [ '#D88080', '#D9C48F', '#95C9A6', '#7EB9CA','#C493D2']
+    #colors = [ '#D88080', '#D9C48F', '#95C9A6']
+    label_lr = ['1e-6', '5e-6', '8e-6', '1e-5', '2e-5']
+    label_wr = ['0', '30', '50', '80', '100']
+    label_bs = ['8', '16', '32']
+    label_ls = ['0', '0.1', '0.2']
+    label_st = ['linear', 'polynomial', 'cosine']
+    
     for i, df in enumerate(dfs):
-        plt.plot(df['epoch'], df[metric], marker=markers[i], label=labels[i], color=colors[i])
+        plt.plot(df['epoch'], df[metric], marker=markers[i], label=label_st[i], color=colors[i])
+    plt.legend(title='Scheduler Type')
 
     plt.xlabel('Epoch')
     plt.ylabel(metric)
-    plt.legend(title='Scheduler Type')
     plt.grid(True, linestyle='--', alpha=0.5)
     if max_epochs != 0 and len(dfs) > 0 and not dfs[0].empty:
         plt.xticks([x for x in range(int(min(dfs[0]['epoch'])), int(max(dfs[0]['epoch']))+1) if x <= max_epochs])
@@ -164,6 +185,17 @@ def plot_over(dfs, metric, max_epochs=0):
         plt.xticks([x for x in range(int(min(dfs[0]['epoch'])), int(max(dfs[0]['epoch']))+1)])
     plt.tight_layout()
     plt.show()
+
+def get_file(files):
+    dfs = []
+    for file in files:
+        if file.endswith(".txt"):
+            print(file)
+            dfs.append(extract_from_text(file))
+        elif file.endswith(".json"):
+            dfs.append(extract_from_json(file))
+    return dfs
+
 
 '''
 df7 = extract_from_json("remote/250724a_79.json")
@@ -189,27 +221,44 @@ plot_over(df1, df2, df3, df4, 'eval_accuracy')
 plot_over(df1, df2, df3, df4, 'eval_loss')
 '''
 
-df_files = [
-    "remote/250822a_76.json",
+df_lr = [
+    "remote/250822a_76.txt",
     "remote/250730b_77.txt",
     "remote/250731a_87.json",
     "remote/250723a_84.json",
-    "remote/250730b_87.json",
+    "remote/251002a_87.txt",
+    #"remote/250730b_87.txt",
+]
+df_bs = [
+    "remote/251003a_89.txt",
+    "remote/250723a_84.json",
+    "remote/251003b_82.txt",
+]
+df_wr = [
+    "remote/250805b_82.json",
+    "remote/250805a_85.json",
+    "remote/250723a_84.json",
+    "remote/251004b_85.txt",
+    "remote/250822b_82.txt",
+]
+df_ls = [
+    "remote/250723a_84.json",
+    "remote/250730a_85.json",
+    "remote/250728_85.txt",
+]
+df_st = [
+    "remote/250822c_85.txt",
+    "remote/250823_85.txt",
+    "remote/250723a_84.json",
 ]
 
-dfs = []
-for file in df_files:
-    if file.endswith(".txt"):
-        dfs.append(extract_from_text(file))
-    elif file.endswith(".json"):
-        dfs.append(extract_from_json(file))
-
+dfs = get_file(df_st)
 plot_over(dfs, 'train_accuracy')
+plot_over(dfs, 'eval_accuracy')
 plot_over(dfs, 'loss')
+plot_over(dfs, 'eval_loss')
 
 '''
-df = extract_from_json("remote/250723a_84.json")
-plot_eval(df)
-plot_metrics(df)
+df = extract_from_text("remote/251004a_85.txt")
+plot_trainval(df)
 '''
-
