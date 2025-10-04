@@ -1,16 +1,11 @@
 print("import 1")
 import pandas as pd
 import numpy as np
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import Dataset
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
-from sklearn.utils.class_weight import compute_class_weight
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 
 MAX_LENGTH: int = 1024
@@ -32,12 +27,6 @@ class TrainAccuracyCallback(TrainerCallback):
             preds = torch.argmax(logits, dim=-1)
             acc = accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
             logs["train_accuracy"] = acc
-
-    def on_epoch_end(self, args, state, control, **kwargs):
-        trainer = kwargs.get("trainer")
-        if trainer is not None:
-            train_metrics = trainer.evaluate(trainer.train_dataset, metric_key_prefix="train")
-            trainer.log({"train_accuracy": train_metrics.get("train_accuracy", None)})
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -149,21 +138,24 @@ preds = np.argmax(final_predictions.predictions, axis=-1)
 true_labels = val_data['label'].values
 
 target_names=["0", "1"]
-report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
-print(f"Code Smell using uniXCoder Classification Report\n {report}")
+val_report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
+print(f"Code Smell using uniXCoder Classification Validation\n {val_report}")
 print("Validation Confusion Matrix:")
 print(confusion_matrix(true_labels, preds))
 
-print("Training Confusion Matrix:")
 train_preds = trainer.predict(train_dataset)
 train_preds_labels = np.argmax(train_preds.predictions, axis=-1)
 train_true_labels = train_data['label'].values
+train_report = classification_report(train_true_labels, train_preds_labels, target_names=target_names, zero_division=0)
+print(f"Code Smell using uniXCoder Classification Training\n {train_report}")
+print("Training Confusion Matrix:")
 print(confusion_matrix(train_true_labels, train_preds_labels))
 
 with open("output_log.txt", "w", encoding="utf-8") as f:
-    f.write(f"Code Smell using uniXCoder Classification Report\n {report}\n")
-    f.write("Validation Confusion Matrix:\n")
-    f.write(str(confusion_matrix(true_labels, preds)) + "\n")
+    f.write(f"Code Smell using uniXCoder Classification Training\n {train_report}\n")
+    f.write(f"Code Smell using uniXCoder Classification Validation\n {val_report}\n")
     f.write("Training Confusion Matrix:\n")
     f.write(str(confusion_matrix(train_true_labels, train_preds_labels)) + "\n\n")
+    f.write("Validation Confusion Matrix:\n")
+    f.write(str(confusion_matrix(true_labels, preds)) + "\n")
     f.write(str(training_args) + "\n")
