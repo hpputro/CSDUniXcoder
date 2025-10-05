@@ -1,6 +1,5 @@
 print("import 1")
 import os
-import json
 import pandas as pd
 import numpy as np
 import torch
@@ -59,7 +58,6 @@ def compute_metrics(eval_pred):
         "f1": f1
     }
 
-# Determinism for split only
 import random
 random.seed(0)
 np.random.seed(0)
@@ -82,7 +80,7 @@ all_pred = []
 fold_metrics = []
 target_names = ["0", "1"]
 
-best_epoch = 150
+best_epoch = 160
 log_path = f"output_log_ckpt{best_epoch}.txt"
 with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"uniXCoder Checkpoint-{best_epoch} Inference over 5-Fold\n")
@@ -90,11 +88,10 @@ with open(log_path, "w", encoding="utf-8") as f:
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / 5 Checkpoint {best_epoch} =====")
-
-    # We only need val split for evaluation
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
+    val_dataset = CodeDataset(val_data, tokenizer, device)
 
-    # Locate fixed checkpoint-150 for this fold
+    # Locate fixed checkpoint-X for this fold
     fold_dir = os.path.join("results", f"fold_{fold_idx}")
     ckpt_path = os.path.join(fold_dir, f"checkpoint-{best_epoch}")
     if not os.path.isdir(ckpt_path):
@@ -104,13 +101,10 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     # Load model from the checkpoint
     model = AutoModelForSequenceClassification.from_pretrained(ckpt_path)
     model.to(device)
-
-    # Prefer tokenizer from checkpoint if available
     try:
         tokenizer = AutoTokenizer.from_pretrained(ckpt_path)
     except Exception:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-    val_dataset = CodeDataset(val_data, tokenizer, device)
 
     # Minimal training args for prediction only
     pred_output_dir = os.path.join(fold_dir, f"pred_ckpt{best_epoch}")
@@ -134,7 +128,6 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     final_predictions = trainer.predict(val_dataset)
     preds = np.argmax(final_predictions.predictions, axis=-1)
     true_labels = val_data['label'].values
-
     all_true.append(true_labels)
     all_pred.append(preds)
 
@@ -163,7 +156,6 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 # Aggregate across all folds
 all_true = np.concatenate(all_true)
 all_pred = np.concatenate(all_pred)
-
 overall_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
 overall_cm = confusion_matrix(all_true, all_pred)
 
