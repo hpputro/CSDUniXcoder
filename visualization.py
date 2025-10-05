@@ -163,7 +163,7 @@ def plot_over(dfs, metric, max_epochs=0):
         dfs = [df[df['epoch'] <= max_epochs] for df in dfs]
 
     plt.figure(figsize=(8,5))
-    markers = ['d', 'o', 'x', '^', 'v']
+    markers = ['^', 's', 'o', 'd', 'v']
     colors = [ '#D88080', '#D9C48F', '#95C9A6', '#7EB9CA','#C493D2']
     #colors = [ '#D88080', '#D9C48F', '#95C9A6']
     label_lr = ['1e-6', '5e-6', '8e-6', '1e-5', '2e-5']
@@ -171,10 +171,11 @@ def plot_over(dfs, metric, max_epochs=0):
     label_bs = ['8', '16', '32']
     label_ls = ['0', '0.1', '0.2']
     label_st = ['linear', 'polynomial', 'cosine']
+    label_fold = ['Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5']
     
     for i, df in enumerate(dfs):
-        plt.plot(df['epoch'], df[metric], marker=markers[i], label=label_st[i], color=colors[i])
-    plt.legend(title='Scheduler Type')
+        plt.plot(df['epoch'], df[metric], marker=markers[i], label=label_fold[i], color=colors[i])
+    plt.legend(title='K-Fold Cross-Validation')
 
     plt.xlabel('Epoch')
     plt.ylabel(metric)
@@ -251,8 +252,15 @@ df_st = [
     "remote/250823_85.txt",
     "remote/250723a_84.json",
 ]
+df_fold = [
+    "remote/251005f1_69.txt",
+    "remote/251005f2_87.txt",
+    "remote/251005f3_87.txt",
+    "remote/251005f4_74.txt",
+    "remote/251005f5_79.txt",
+]
 
-dfs = get_file(df_st)
+dfs = get_file(df_fold)
 plot_over(dfs, 'train_accuracy')
 plot_over(dfs, 'eval_accuracy')
 plot_over(dfs, 'loss')
