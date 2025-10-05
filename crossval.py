@@ -10,7 +10,7 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 1024
+MAX_LENGTH: int = 512
 FILEDS: str = 'switch_statements_1024.csv'
 
 from transformers import TrainerCallback
@@ -83,12 +83,12 @@ set_seed(0)
 
 # Load dataset
 dataset = pd.read_csv(FILEDS)
-dataset = dataset[dataset['length'] < MAX_LENGTH]
+#dataset = dataset[dataset['length'] < MAX_LENGTH]
 dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/unixcoder-base"
+model_name = "microsoft/codebert-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 print("Device: "+device+"\n")
 
