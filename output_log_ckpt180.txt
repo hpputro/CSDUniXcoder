@@ -1,0 +1,85 @@
+uniXCoder Checkpoint-180 Inference over 5-Fold
+Fold 1 -> ckpt: results/fold_1/checkpoint-180
+              precision    recall  f1-score   support
+
+           0       0.79      0.55      0.65        20
+           1       0.64      0.84      0.73        19
+
+    accuracy                           0.69        39
+   macro avg       0.71      0.70      0.69        39
+weighted avg       0.71      0.69      0.69        39
+
+[[11  9]
+ [ 3 16]]
+
+Fold 2 -> ckpt: results/fold_2/checkpoint-180
+              precision    recall  f1-score   support
+
+           0       0.75      0.79      0.77        19
+           1       0.79      0.75      0.77        20
+
+    accuracy                           0.77        39
+   macro avg       0.77      0.77      0.77        39
+weighted avg       0.77      0.77      0.77        39
+
+[[15  4]
+ [ 5 15]]
+
+Fold 3 -> ckpt: results/fold_3/checkpoint-180
+              precision    recall  f1-score   support
+
+           0       0.76      0.68      0.72        19
+           1       0.71      0.79      0.75        19
+
+    accuracy                           0.74        38
+   macro avg       0.74      0.74      0.74        38
+weighted avg       0.74      0.74      0.74        38
+
+[[13  6]
+ [ 4 15]]
+
+Fold 4 -> ckpt: results/fold_4/checkpoint-180
+              precision    recall  f1-score   support
+
+           0       0.69      0.58      0.63        19
+           1       0.64      0.74      0.68        19
+
+    accuracy                           0.66        38
+   macro avg       0.66      0.66      0.66        38
+weighted avg       0.66      0.66      0.66        38
+
+[[11  8]
+ [ 5 14]]
+
+Fold 5 -> ckpt: results/fold_5/checkpoint-180
+              precision    recall  f1-score   support
+
+           0       0.79      0.58      0.67        19
+           1       0.67      0.84      0.74        19
+
+    accuracy                           0.71        38
+   macro avg       0.73      0.71      0.71        38
+weighted avg       0.73      0.71      0.71        38
+
+[[11  8]
+ [ 3 16]]
+
+
+===== Checkpoint-180 Cross-Validation Summary =====
+Avg Accuracy: 0.7134
+Avg Precision: 0.7225
+Avg Recall: 0.7134
+Avg F1: 0.7105
+Overall Report (concatenated predictions):
+              precision    recall  f1-score   support
+
+           0       0.75      0.64      0.69        96
+           1       0.68      0.79      0.73        96
+
+    accuracy                           0.71       192
+   macro avg       0.72      0.71      0.71       192
+weighted avg       0.72      0.71      0.71       192
+
+Overall Confusion Matrix:
+[[61 35]
+ [20 76]]
