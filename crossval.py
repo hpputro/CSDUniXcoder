@@ -10,7 +10,7 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 512
+MAX_LENGTH: int = 1024
 FILEDS: str = 'switch_statements_1024.csv'
 
 from transformers import TrainerCallback
@@ -83,28 +83,25 @@ set_seed(0)
 
 # Load dataset
 dataset = pd.read_csv(FILEDS)
-#dataset = dataset[dataset['length'] < MAX_LENGTH]
+dataset = dataset[dataset['length'] < MAX_LENGTH]
 dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/codebert-base"
+model_name = "microsoft/unixcoder-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 print("Device: "+device+"\n")
-
-# 5-Fold Stratified Cross-Validation
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 
 all_true = []
 all_pred = []
 fold_metrics = []
-
 target_names=["0", "1"]
 
 log_path = "output_log_crossval.txt"
 with open(log_path, "w", encoding="utf-8") as f:
     f.write("uniXCoder 5-Fold Cross-Validation Results\n")
 
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / 5 =====")
     train_data = dataset.iloc[train_idx].reset_index(drop=True)
@@ -117,14 +114,11 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     val_csv_path = os.path.join(fold_dir, "val.csv")
     train_data.to_csv(train_csv_path, index=False)
     val_data.to_csv(val_csv_path, index=False)
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"Fold {fold_idx}: train -> {train_csv_path} ({len(train_data)} rows), val -> {val_csv_path} ({len(val_data)} rows)\n")
     print("Train label distribution:\n", train_data['label'].value_counts())
     print("Val label distribution:\n", val_data['label'].value_counts())
 
     train_dataset = CodeDataset(train_data, tokenizer, device)
     val_dataset = CodeDataset(val_data, tokenizer, device)
-
     model = AutoModelForSequenceClassification.from_pretrained(
         model_name, num_labels=2, problem_type="single_label_classification"
     )
@@ -164,8 +158,6 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     final_predictions = trainer.predict(val_dataset)
     preds = np.argmax(final_predictions.predictions, axis=-1)
     true_labels = val_data['label'].values
-
-    # Accumulate for overall metrics
     all_true.append(true_labels)
     all_pred.append(preds)
 
@@ -200,7 +192,6 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 # Aggregate across all folds
 all_true = np.concatenate(all_true)
 all_pred = np.concatenate(all_pred)
-
 overall_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
 overall_cm = confusion_matrix(all_true, all_pred)
 

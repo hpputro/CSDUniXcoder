@@ -10,9 +10,8 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 512
+MAX_LENGTH: int = 1024
 FILEDS: str = 'switch_statements_1024.csv'
-
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -26,7 +25,6 @@ class CodeDataset(Dataset):
     def __getitem__(self, idx):
         file_path = "finalsrc/" + self.dataframe.iloc[idx]['filename']
         label = self.dataframe.iloc[idx]['label']
-
         with open(file_path, 'r', encoding='utf-8') as f:
             code = f.read()
 
@@ -45,7 +43,6 @@ class CodeDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long).to(self.device)
         }
 
-
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     preds = logits.argmax(axis=-1)
@@ -59,19 +56,21 @@ def compute_metrics(eval_pred):
     }
 
 import random
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
-torch.cuda.manual_seed_all(0)
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+set_seed(0)
 
 # Load dataset and build folds identical to training
 dataset = pd.read_csv(FILEDS)
-#dataset = dataset[dataset['length'] < MAX_LENGTH]
+dataset = dataset[dataset['length'] < MAX_LENGTH]
 dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/codebert-base"
+model_name = "microsoft/unixcoder-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 print("Device: " + device + "\n")
 

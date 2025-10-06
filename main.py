@@ -40,7 +40,6 @@ class CodeDataset(Dataset):
     def __getitem__(self, idx):
         file_path = "finalsrc/"+self.dataframe.iloc[idx]['filename']
         label = self.dataframe.iloc[idx]['label']
-
         with open(file_path, 'r', encoding='utf-8') as f:
             code = f.read()
 
