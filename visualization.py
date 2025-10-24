@@ -1,5 +1,6 @@
 import re
 import json
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -89,8 +90,8 @@ def plot_accuracy(df):
 
 def plot_train(df):
     plt.figure(figsize=(8,5))
-    plt.plot(df['epoch'], df['train_accuracy'], marker='o', label='Train Accuracy', color='#5D7080')
-    plt.plot(df['epoch'], df['loss'], marker='s', label='Train Loss', color='#B58B6A')
+    plt.plot(df['epoch'], df['train_accuracy'], marker='d', label='Train Accuracy', color='#3F6E8F')
+    plt.plot(df['epoch'], df['loss'], marker='s', label='Train Loss', color='#F4CFA4')
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy / Loss')
     plt.title('Training Performance per Epoch')
@@ -115,13 +116,13 @@ def plot_eval(df):
 
 def plot_trainval(df):
     plt.figure(figsize=(8,5))
-    plt.plot(df['epoch'], df['train_accuracy'], marker='^', label='Train Accuracy', color='#B490D1')
-    plt.plot(df['epoch'], df['eval_accuracy'], marker='v', label='Validation Accuracy', color='#D04F4F')
-    plt.plot(df['epoch'], df['loss'], marker='<', label='Train Loss', color='#D2B87E')
-    plt.plot(df['epoch'], df['eval_loss'], marker='>', label='Validation Loss', color='#92BF9E')
+    plt.plot(df['epoch'], df['train_accuracy'], marker='p', label='Train Accuracy', color='#d48989')
+    plt.plot(df['epoch'], df['eval_accuracy'], marker='x', label='Validation Accuracy', color='#c7ab68')
+    plt.plot(df['epoch'], df['loss'], marker='s', label='Train Loss', color='#397C9E')
+    plt.plot(df['epoch'], df['eval_loss'], marker='d', label='Validation Loss', color='#5fae7c')
     plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Train vs Validation Loss per Epoch')
+    plt.ylabel('Accuracy/Loss')
+    plt.title('Training Performance per Epoch')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.xticks([x for x in range(int(min(df['epoch'])), int(max(df['epoch']))+1) if x % 2 == 0])
@@ -130,23 +131,8 @@ def plot_trainval(df):
 
 def plot_metrics(df):
     plt.figure(figsize=(8,5))
-    plt.plot(df['epoch'], df['eval_precision'], marker='^', label='Precision', color='#5D7080')
-    plt.plot(df['epoch'], df['eval_recall'], marker='v', label='Recall', color='#2A3B36')
-    plt.plot(df['epoch'], df['eval_f1'], marker='s', label='F1 Score', color='#B58B6A')
-    plt.plot(df['epoch'], df['eval_accuracy'], marker='d', label='Accuracy', color='#8A5C5C')
-    plt.xlabel('Epoch')
-    plt.ylabel('Evaluation Metrics')
-    plt.title('Accuracy vs Precision vs Recall vs F1 Score per Epoch')
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.5)
-    plt.xticks([x for x in range(int(min(df['epoch'])), int(max(df['epoch']))+1) if x % 2 == 0])
-    plt.tight_layout()
-    plt.show()
-
-def plot_metrics(df):
-    plt.figure(figsize=(8,5))
-    plt.plot(df['epoch'], df['eval_precision'], marker='^', label='Precision', color='#5D7080')
-    plt.plot(df['epoch'], df['eval_recall'], marker='v', label='Recall', color='#2A3B36')
+    plt.plot(df['epoch'], df['eval_precision'], marker='p', label='Precision', color='#5D7080')
+    plt.plot(df['epoch'], df['eval_recall'], marker='x', label='Recall', color='#2A3B36')
     plt.plot(df['epoch'], df['eval_f1'], marker='s', label='F1 Score', color='#B58B6A')
     plt.plot(df['epoch'], df['eval_accuracy'], marker='d', label='Accuracy', color='#8A5C5C')
     plt.xlabel('Epoch')
@@ -163,9 +149,13 @@ def plot_over(dfs, metric, max_epochs=0):
         dfs = [df[df['epoch'] <= max_epochs] for df in dfs]
 
     plt.figure(figsize=(8,5))
-    markers = ['^', 's', 'o', 'd', 'v']
-    colors = [ '#D88080', '#D9C48F', '#95C9A6', '#7EB9CA','#C493D2']
-    #colors = [ '#D88080', '#D9C48F', '#95C9A6']
+    marker_bs = ['d', 'x', 's']
+    marker_st = ['d', 's', 'x']
+    marker_ls = ['x', 'd', '.']
+    marker_wr = ['^', 's', 'x', 'd', 'v']
+    marker_lr = ['^', 's', 'd', 'x', 'v']
+    colors = [ '#d48989', '#c7ab68', '#5fae7c', '#397C9E','#883A9D']
+    #colors = [ '#d48989', '#c7ab68', '#5fae7c']
     label_lr = ['1e-6', '5e-6', '8e-6', '1e-5', '2e-5']
     label_wr = ['0', '30', '50', '80', '100']
     label_bs = ['8', '16', '32']
@@ -174,8 +164,8 @@ def plot_over(dfs, metric, max_epochs=0):
     label_fold = ['Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5']
     
     for i, df in enumerate(dfs):
-        plt.plot(df['epoch'], df[metric], marker=markers[i], label=label_fold[i], color=colors[i])
-    plt.legend(title='K-Fold Cross-Validation')
+        plt.plot(df['epoch'], df[metric], marker=marker_st[i], label=label_st[i], color=colors[i])
+    plt.legend(title='Scheduler Type')
 
     plt.xlabel('Epoch')
     plt.ylabel(metric)
@@ -187,6 +177,48 @@ def plot_over(dfs, metric, max_epochs=0):
     plt.tight_layout()
     plt.show()
 
+def plot_confusion_matrix(values, class_labels=None, normalize=False, title='Confusion Matrix'):
+    matrix = np.array(values).reshape(2, 2)
+    if normalize:
+        row_sums = matrix.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1
+        matrix = matrix / row_sums
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    cmap = plt.cm.Blues
+    im = ax.imshow(matrix, interpolation='nearest', cmap=cmap)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    ax.set(title=title, xlabel='Predicted label', ylabel='True label')
+    tick_marks = np.arange(matrix.shape[0])
+    ax.set_xticks(tick_marks)
+    ax.set_yticks(tick_marks)
+
+    if class_labels:
+        ax.set_xticklabels(class_labels, rotation=45, ha='right')
+        ax.set_yticklabels(class_labels)
+    else:
+        default_labels = [f'Class {i}' for i in range(matrix.shape[0])]
+        ax.set_xticklabels(default_labels, rotation=45, ha='right')
+        ax.set_yticklabels(default_labels)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = matrix.max() / 2.0
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            value = matrix[i, j]
+            ax.text(
+                j,
+                i,
+                format(value, fmt),
+                ha='center',
+                va='center',
+                color='white' if value > thresh else 'black'
+            )
+
+    fig.tight_layout()
+    plt.show()
+
 def get_file(files):
     dfs = []
     for file in files:
@@ -196,31 +228,6 @@ def get_file(files):
         elif file.endswith(".json"):
             dfs.append(extract_from_json(file))
     return dfs
-
-
-'''
-df7 = extract_from_json("remote/250724a_79.json")
-df8 = extract_from_json("remote/250723b_79.json")
-df5 = extract_from_json("remote/250723a_84.json")
-df10 = extract_from_json("remote/250722c_79.json")
-plot_over(df5, df7, df8, df10, 'eval_accuracy')
-
-#learning rate
-df1 = extract_from_text("remote/250730b_77.txt")
-df2 = extract_from_json("remote/250731a_87.json")
-df3 = extract_from_json("remote/250723a_84.json")
-df4 = extract_from_json("remote/250730b_87.json")
-plot_over(df1, df2, df3, df4, 'eval_accuracy')
-plot_over(df1, df2, df3, df4, 'eval_loss')
-
-#warmup steps
-df1 = extract_from_json("remote/250805b_82.json")
-df2 = extract_from_json("remote/250805a_85.json")
-df3 = extract_from_json("remote/250723a_84.json")
-df4 = extract_from_text("remote/250730c_85.txt")
-plot_over(df1, df2, df3, df4, 'eval_accuracy')
-plot_over(df1, df2, df3, df4, 'eval_loss')
-'''
 
 df_lr = [
     "remote/250822a_76.txt",
@@ -260,13 +267,18 @@ df_fold = [
     "remote/251005f5_79.txt",
 ]
 
-dfs = get_file(df_fold)
-plot_over(dfs, 'train_accuracy')
-plot_over(dfs, 'eval_accuracy')
-plot_over(dfs, 'loss')
+dfs = get_file(df_st)
+#plot_over(dfs, 'train_accuracy')
+#plot_over(dfs, 'eval_accuracy')
+#plot_over(dfs, 'loss')
 plot_over(dfs, 'eval_loss')
 
-'''
-df = extract_from_text("remote/251004a_85.txt")
-plot_trainval(df)
-'''
+df = extract_from_json("remote/250723a_84.json")
+#plot_trainval(df)
+
+confusion_values = [
+    [84, 12],
+    [26, 70],
+]
+#plot_confusion_matrix(confusion_values,class_labels=['Clean code', 'Smell code'])
+

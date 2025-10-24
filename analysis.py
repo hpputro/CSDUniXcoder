@@ -6,7 +6,7 @@ print("importing libraries")
 import matplotlib.pyplot as plt
 
 MAX_LENGTH: int = 1024
-FILEDS: str = 'switch_statements.csv'
+FILEDS: str = 'switch_statements_1024.csv'
 
 from torch.utils.data import Dataset
 class CodeDataset(Dataset):
@@ -77,7 +77,7 @@ xtick_labels = [str(int(v)) for v in xtick_vals]
 plt.xticks(xtick_vals, xtick_labels, rotation=45)
 plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 
 # Stacked bar chart for label distribution in train and validation sets
@@ -96,17 +96,16 @@ plt.ylabel("Number of Samples")
 plt.title("Dataset Distribution: Clean Code vs Smell Code (Stacked Train/Val)")
 plt.legend()
 plt.tight_layout()
-plt.show()
-
+#plt.show()
 
 # Stacked histogram for token count (length) by label
 plt.figure(figsize=(7,4))
 bins = range(0, int(dataset['length'].max()) + 100, 100)
 labels = [0, 1]
-colors = ['#A9C6D9', '#E9CBAA']
+colors = ['#006699', '#E9BB7D']
 label_names = {0: "Clean Code", 1: "Smell Code"}
 data_by_label = [dataset[dataset['label'] == l]['length'] for l in labels]
-plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
+#plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
 
 plt.hist(
     data_by_label,
