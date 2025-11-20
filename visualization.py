@@ -274,14 +274,14 @@ df_fold = [
     "remote/251005f5_79.txt",
 ]
 
-dfs = get_file(df_fold)
+#dfs = get_file(df_fold)
 #plot_over(dfs, 'train_accuracy')
 #plot_over(dfs, 'eval_accuracy')
 #plot_over(dfs, 'loss')
 #plot_over(dfs, 'eval_loss')
 
-df = extract_from_json("remote/250723a_84.json")
-#plot_trainval(df)
+df = extract_from_json("trainer_state.json")
+plot_trainval(df)
 
 confusion_values = [
     [84, 12],

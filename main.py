@@ -60,7 +60,7 @@ class CodeDataset(Dataset):
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
-    preds = logits.argmax(axis=-1)  # Ambil kelas dengan probabilitas tertinggi
+    preds = logits.argmax(axis=-1)
     accuracy = accuracy_score(labels, preds)
     precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
 
