@@ -152,23 +152,31 @@ def plot_over(dfs, metric, max_epochs=0):
     marker_bs = ['d', 'x', 's']
     marker_st = ['d', 's', 'x']
     marker_ls = ['x', 'd', '.']
-    marker_wr = ['^', 's', 'x', 'd', 'v']
+    marker_ws = ['^', 's', 'x', 'd', 'v']
     marker_lr = ['^', 's', 'd', 'x', 'v']
     colors = [ '#d48989', '#c7ab68', '#5fae7c', '#397C9E','#883A9D']
-    #colors = [ '#d48989', '#c7ab68', '#5fae7c']
     label_lr = ['1e-6', '5e-6', '8e-6', '1e-5', '2e-5']
-    label_wr = ['0', '30', '50', '80', '100']
+    label_ws = ['0', '30', '50', '80', '100']
     label_bs = ['8', '16', '32']
     label_ls = ['0', '0.1', '0.2']
     label_st = ['linear', 'polynomial', 'cosine']
     label_fold = ['Fold 1', 'Fold 2', 'Fold 3', 'Fold 4', 'Fold 5']
     
     for i, df in enumerate(dfs):
-        plt.plot(df['epoch'], df[metric], marker=marker_st[i], label=label_st[i], color=colors[i])
-    plt.legend(title='Scheduler Type')
+        plt.plot(df['epoch'], df[metric], marker=marker_ws[i], label=label_fold[i], color=colors[i])
+    plt.legend(title='K-Fold Cross Validation')
 
     plt.xlabel('Epoch')
+    if metric == 'train_accuracy':
+        metric = 'Training Accuracy'
+    if metric == 'eval_accuracy':
+        metric = 'Validation Accuracy'
+    if metric == 'loss':
+        metric = 'Training Loss'
+    if metric == 'eval_loss':
+        metric = 'Validation Loss'
     plt.ylabel(metric)
+
     plt.grid(True, linestyle='--', alpha=0.5)
     if max_epochs != 0 and len(dfs) > 0 and not dfs[0].empty:
         plt.xticks([x for x in range(int(min(dfs[0]['epoch'])), int(max(dfs[0]['epoch']))+1) if x <= max_epochs])
@@ -235,14 +243,13 @@ df_lr = [
     "remote/250731a_87.json",
     "remote/250723a_84.json",
     "remote/251002a_87.txt",
-    #"remote/250730b_87.txt",
 ]
 df_bs = [
     "remote/251003a_89.txt",
     "remote/250723a_84.json",
     "remote/251003b_82.txt",
 ]
-df_wr = [
+df_ws = [
     "remote/250805b_82.json",
     "remote/250805a_85.json",
     "remote/250723a_84.json",
@@ -267,11 +274,11 @@ df_fold = [
     "remote/251005f5_79.txt",
 ]
 
-dfs = get_file(df_st)
+dfs = get_file(df_fold)
 #plot_over(dfs, 'train_accuracy')
 #plot_over(dfs, 'eval_accuracy')
 #plot_over(dfs, 'loss')
-plot_over(dfs, 'eval_loss')
+#plot_over(dfs, 'eval_loss')
 
 df = extract_from_json("remote/250723a_84.json")
 #plot_trainval(df)

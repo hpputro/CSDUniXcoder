@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -53,10 +53,9 @@ for name, base_clf in models.items():
     print("=" * 80)
     print(f"Evaluating {name} with 5-fold Stratified CV")
     acc_scores = []
-    prec_scores = []
-    rec_scores = []
-    f1_scores = []
     cm_sum = np.zeros((labels.size, labels.size), dtype=int)
+    y_true_all = []
+    y_pred_all = []
 
     for fold_idx, (train_idx, test_idx) in enumerate(kf.split(X, y), 1):
         clf = clone(base_clf)
@@ -65,38 +64,40 @@ for name, base_clf in models.items():
 
         clf.fit(X_train, y_train)
         y_pred = clf.predict(X_test)
+        y_true_all.append(y_test)
+        y_pred_all.append(y_pred)
 
         cm = confusion_matrix(y_test, y_pred, labels=labels)
         cm_sum += cm
         acc = accuracy_score(y_test, y_pred)
-        prec, rec, f1, _ = precision_recall_fscore_support(y_test, y_pred, average='macro', zero_division=0)
+        prec, rec, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None, zero_division=0)
+        f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
+        print(f"Fold {fold_idx}: accuracy={acc:.4f}, precision={prec[1]:.4f},recall={rec[1]:.4f}, f1={f1[1]:.4f}")
 
-        acc_scores.append(acc)
-        prec_scores.append(prec)
-        rec_scores.append(rec)
-        f1_scores.append(f1)
+    print(cm_sum)
+    ay_true = np.concatenate(y_true_all) if y_true_all else np.array([])
+    ay_pred = np.concatenate(y_pred_all) if y_pred_all else np.array([])
+    print("Classification Report (Aggregated across folds):")
+    print(classification_report(ay_true, ay_pred, labels=labels, digits=4, zero_division=0))
 
-        print(f"Fold {fold_idx}: accuracy={acc:.4f}, precision={prec:.4f}, recall={rec:.4f}, f1={f1:.4f}")
-        print("Classification Report:")
-        print(classification_report(y_test, y_pred, digits=4, zero_division=0))
-
+    acc_fin = accuracy_score(ay_true, ay_pred)
+    prec_fin, rec_fin, fb, _ = precision_recall_fscore_support(ay_true, ay_pred, average=None, zero_division=0)
+    f1_fin = f1_score(ay_true, ay_pred, average=None, zero_division=0)
+        
     res = {
         "model": name,
-        "accuracy": float(np.mean(acc_scores)),
-        "accuracy_std": float(np.std(acc_scores, ddof=1)),
-        "precision": float(np.mean(prec_scores)),
-        "recall": float(np.mean(rec_scores)),
-        "f1_score": float(np.mean(f1_scores)),
-        "confusion_matrix_sum": cm_sum.tolist(),
+        "accuracy": acc_fin,
+        "precision": prec_fin[1],
+        "recall": rec_fin[1],
+        "f1_score": f1_fin[1],
     }
     results.append(res)
 
 summary_df = pd.DataFrame(results).sort_values(by="accuracy", ascending=True).reset_index(drop=True)
 print("\n" + "#" * 80)
-print("RINGKASAN HASIL (5-fold CV, urut akurasi rata-rata menurun):")
+print("RESULT SUMMARY (5-fold CV asc):")
 metrics_cols = [
     "accuracy",
-    "accuracy_std",
     "precision",
     "recall",
     "f1_score",
@@ -105,4 +106,3 @@ summary_pretty = summary_df.copy()
 for col in metrics_cols:
     summary_pretty[col] = summary_pretty[col].map(lambda x: f"{x * 100:.1f}%")
 print(summary_pretty[["model"] + metrics_cols])
-
