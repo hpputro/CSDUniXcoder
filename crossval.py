@@ -1,9 +1,11 @@
+#main with 5-fold cross-validation and reporting
 print("import 1")
 import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 import os
+import time
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
@@ -136,7 +138,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         learning_rate=1e-5,
         warmup_steps=50,
         lr_scheduler_type="cosine",
-        save_total_limit=10,
+        save_total_limit=5,
         fp16=torch.cuda.is_available(),
         report_to="none",
         seed=0
@@ -152,7 +154,11 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     )
 
     print("Training Fold", fold_idx)
+    train_start_time = time.time()
     trainer.train()
+    train_end_time = time.time()
+    ttime = train_end_time - train_start_time
+    print(f"Training time for Fold {fold_idx}: {ttime:.2f} seconds")
 
     # Validation predictions for this fold
     final_predictions = trainer.predict(val_dataset)
@@ -168,7 +174,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
     print(cm_val)
 
-    # Optional: also evaluate on train set per fold (to mirror main.py)
+    # Evaluate on train set per fold
     train_preds = trainer.predict(train_dataset)
     train_preds_labels = np.argmax(train_preds.predictions, axis=-1)
     train_true_labels = train_data['label'].values
@@ -186,7 +192,8 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         "accuracy": acc,
         "precision": pr,
         "recall": rc,
-        "f1": f1
+        "f1": f1,
+        "train_time": ttime
     })
 
 # Aggregate across all folds
@@ -199,12 +206,14 @@ avg_acc = np.mean([m["accuracy"] for m in fold_metrics])
 avg_pr = np.mean([m["precision"] for m in fold_metrics])
 avg_rc = np.mean([m["recall"] for m in fold_metrics])
 avg_f1 = np.mean([m["f1"] for m in fold_metrics])
+avg_time = np.mean([m["train_time"] for m in fold_metrics])
 
 print("\n===== Cross-Validation Summary =====")
 print(f"Avg Accuracy: {avg_acc:.4f}")
 print(f"Avg Precision: {avg_pr:.4f}")
 print(f"Avg Recall: {avg_rc:.4f}")
 print(f"Avg F1: {avg_f1:.4f}")
+print(f"Avg Training Time: {avg_time:.4f} seconds")
 print("Overall Report (concatenated predictions):\n" + overall_report)
 print("Overall Confusion Matrix:")
 print(overall_cm)
@@ -215,6 +224,7 @@ with open(log_path, "a", encoding="utf-8") as f:
     f.write(f"Avg Precision: {avg_pr:.4f}\n")
     f.write(f"Avg Recall: {avg_rc:.4f}\n")
     f.write(f"Avg F1: {avg_f1:.4f}\n")
+    f.write(f"Avg Training Time: {avg_time:.4f} seconds")
     f.write("Overall Report (concatenated predictions):\n")
     f.write(overall_report + "\n")
     f.write("Overall Confusion Matrix:\n")

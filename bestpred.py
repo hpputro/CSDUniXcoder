@@ -1,3 +1,4 @@
+#crossval in a checkpoint and reporting each fold
 print("import 1")
 import os
 import pandas as pd
