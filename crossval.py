@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset
 import os
 import time
+from datetime import datetime
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
@@ -14,12 +15,29 @@ from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 1024
 FILEDS: str = 'switch_statements_1024.csv'
+SPLIT: int = 5
 
 from transformers import TrainerCallback
-class TrainAccuracyCallback(TrainerCallback):
+class TrainMetricsCallback(TrainerCallback):
+    def __init__(self):
+        self.epoch_start_time = None
+        self.last_train_epoch_runtime = None
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        self.epoch_start_time = time.time()
+
     def on_log(self, args, state, control, logs=None, model=None, **kwargs):
+        if logs is None or model is None:
+            return
+
+        if self.epoch_start_time is not None and "loss" in logs and "eval_loss" not in logs:
+            self.last_train_epoch_runtime = round(time.time() - self.epoch_start_time, 4)
+            logs["train_epoch_runtime"] = self.last_train_epoch_runtime
+            self.epoch_start_time = None
+
         train_dataloader = kwargs.get("train_dataloader", None)
         if train_dataloader is not None:
+            was_training = model.training
             model.eval()
             batch = next(iter(train_dataloader))
             inputs = {k: v.to(model.device) for k, v in batch.items() if k != "labels"}
@@ -31,6 +49,8 @@ class TrainAccuracyCallback(TrainerCallback):
             preds = torch.argmax(logits, dim=-1)
             acc = accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
             logs["train_accuracy"] = acc
+            if was_training:
+                model.train()
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -100,12 +120,14 @@ fold_metrics = []
 target_names=["0", "1"]
 
 log_path = "output_log_crossval.txt"
+run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
-    f.write("uniXCoder 5-Fold Cross-Validation Results\n")
+    f.write(f"uniXCoder {SPLIT}-Fold Cross-Validation Results\n")
+    f.write(f"Run Timestamp: {run_timestamp}\n")
 
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
-    print(f"\n===== Fold {fold_idx} / 5 =====")
+    print(f"\n===== Fold {fold_idx} / {SPLIT} =====")
     train_data = dataset.iloc[train_idx].reset_index(drop=True)
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
 
@@ -150,7 +172,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
-        callbacks=[TrainAccuracyCallback()]
+        callbacks=[TrainMetricsCallback()]
     )
 
     print("Training Fold", fold_idx)
@@ -206,25 +228,26 @@ avg_acc = np.mean([m["accuracy"] for m in fold_metrics])
 avg_pr = np.mean([m["precision"] for m in fold_metrics])
 avg_rc = np.mean([m["recall"] for m in fold_metrics])
 avg_f1 = np.mean([m["f1"] for m in fold_metrics])
-avg_time = np.mean([m["train_time"] for m in fold_metrics])
+tot_time = np.sum([m["train_time"] for m in fold_metrics])
 
 print("\n===== Cross-Validation Summary =====")
 print(f"Avg Accuracy: {avg_acc:.4f}")
 print(f"Avg Precision: {avg_pr:.4f}")
 print(f"Avg Recall: {avg_rc:.4f}")
 print(f"Avg F1: {avg_f1:.4f}")
-print(f"Avg Training Time: {avg_time:.4f} seconds")
+print(f"Total Training Time: {tot_time:.4f} seconds")
 print("Overall Report (concatenated predictions):\n" + overall_report)
 print("Overall Confusion Matrix:")
 print(overall_cm)
 
 with open(log_path, "a", encoding="utf-8") as f:
     f.write("\n===== Cross-Validation Summary =====\n")
+    f.write(f"Fold {SPLIT}\n")
     f.write(f"Avg Accuracy: {avg_acc:.4f}\n")
     f.write(f"Avg Precision: {avg_pr:.4f}\n")
     f.write(f"Avg Recall: {avg_rc:.4f}\n")
     f.write(f"Avg F1: {avg_f1:.4f}\n")
-    f.write(f"Avg Training Time: {avg_time:.4f} seconds")
+    f.write(f"Total Training Time: {tot_time:.4f} seconds\n")
     f.write("Overall Report (concatenated predictions):\n")
     f.write(overall_report + "\n")
     f.write("Overall Confusion Matrix:\n")
