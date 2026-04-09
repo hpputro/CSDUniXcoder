@@ -79,6 +79,7 @@ print("Device: " + device + "\n")
 
 all_true = []
 all_pred = []
+all_fold = []
 fold_metrics = []
 target_names = ["0", "1"]
 
@@ -142,6 +143,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     true_labels = val_data['label'].values
     all_true.append(true_labels)
     all_pred.append(preds)
+    all_fold.append(np.full(len(true_labels), fold_idx))
 
     # Per-fold report
     val_report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
@@ -165,10 +167,14 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 # Aggregate across all folds
 all_true = np.concatenate(all_true)
 all_pred = np.concatenate(all_pred)
+all_fold = np.concatenate(all_fold)
 all_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
 all_cm = confusion_matrix(all_true, all_pred)
-all_pr, all_rc, all_f1, _ = precision_recall_fscore_support(all_true, all_pred, average="weighted", zero_division=0)
-all_acc = accuracy_score(all_true, all_pred)
+
+all_acc = np.mean([m["accuracy"] for m in fold_metrics])
+all_pr = np.mean([m["precision"] for m in fold_metrics])
+all_rc = np.mean([m["recall"] for m in fold_metrics])
+all_f1 = np.mean([m["f1"] for m in fold_metrics])
 
 all_ns = np.sum([m["nsamples"] for m in fold_metrics])
 all_time = np.sum([m["time"] for m in fold_metrics])
@@ -203,6 +209,7 @@ with open(log_path, "a", encoding="utf-8") as f:
 
 pred_csv_path = f"all_true_pred_ckpt{best_epoch}.csv"
 pd.DataFrame({
+    "all_fold": all_fold,
     "all_true": all_true,
-    "all_pred": all_pred,
+    "all_pred": all_pred
 }).to_csv(pred_csv_path, index=False, encoding="utf-8")
