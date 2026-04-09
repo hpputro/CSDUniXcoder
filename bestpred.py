@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import time
+from datetime import datetime
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
@@ -82,9 +84,11 @@ target_names = ["0", "1"]
 
 best_epoch = 180
 log_path = f"output_log_ckpt{best_epoch}.txt"
+run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"uniXCoder Checkpoint-{best_epoch} Inference over 5-Fold\n")
-
+    f.write(f"Run Timestamp: {run_timestamp}\n")
+    
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / 5 Checkpoint {best_epoch} =====")
@@ -125,7 +129,15 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         compute_metrics=compute_metrics,
     )
 
+    pred_start_time = time.time()
     final_predictions = trainer.predict(val_dataset)
+    pred_end_time = time.time()
+    total_pred_time = pred_end_time - pred_start_time
+    ns = len(val_dataset)
+    avg_latency = total_pred_time / ns
+    throughput = ns / total_pred_time
+    print(f"Fold {fold_idx}: {total_pred_time:.4f} s, {avg_latency:.6f} s/sample, {throughput:.2f} samples/s")
+
     preds = np.argmax(final_predictions.predictions, axis=-1)
     true_labels = val_data['label'].values
     all_true.append(true_labels)
@@ -145,41 +157,52 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         "accuracy": acc,
         "precision": pr,
         "recall": rc,
-        "f1": f1
+        "f1": f1,
+        "nsamples": ns,
+        "time": total_pred_time
     })
-
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"Fold {fold_idx} -> ckpt: {ckpt_path}\n")
-        f.write(val_report + "\n")
-        f.write(str(cm_val) + "\n\n")
 
 # Aggregate across all folds
 all_true = np.concatenate(all_true)
 all_pred = np.concatenate(all_pred)
-overall_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
-overall_cm = confusion_matrix(all_true, all_pred)
+all_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
+all_cm = confusion_matrix(all_true, all_pred)
+all_pr, all_rc, all_f1, _ = precision_recall_fscore_support(all_true, all_pred, average="weighted", zero_division=0)
+all_acc = accuracy_score(all_true, all_pred)
 
-avg_acc = np.mean([m["accuracy"] for m in fold_metrics])
-avg_pr = np.mean([m["precision"] for m in fold_metrics])
-avg_rc = np.mean([m["recall"] for m in fold_metrics])
-avg_f1 = np.mean([m["f1"] for m in fold_metrics])
+all_ns = np.sum([m["nsamples"] for m in fold_metrics])
+all_time = np.sum([m["time"] for m in fold_metrics])
+avg_latency = all_time / all_ns
+throughput = all_ns / all_time
 
 print(f"\n===== Checkpoint-{best_epoch} Cross-Validation Summary =====")
-print(f"Avg Accuracy: {avg_acc:.4f}")
-print(f"Avg Precision: {avg_pr:.4f}")
-print(f"Avg Recall: {avg_rc:.4f}")
-print(f"Avg F1: {avg_f1:.4f}")
-print("Overall Report (concatenated predictions):\n" + overall_report)
+print(f"Avg Accuracy: {all_acc:.4f}")
+print(f"Avg Precision: {all_pr:.4f}")
+print(f"Avg Recall: {all_rc:.4f}")
+print(f"Avg F1: {all_f1:.4f}")
+print(f"Total prediction time: {all_time:.4f} seconds")
+print(f"Average latency per sample: {avg_latency:.4f} seconds/sample")
+print(f"Throughput: {throughput:.2f} samples/second")
+print("Overall Report (concatenated predictions):\n" + all_report)
 print("Overall Confusion Matrix:")
-print(overall_cm)
+print(all_cm)
 
 with open(log_path, "a", encoding="utf-8") as f:
     f.write(f"\n===== Checkpoint-{best_epoch} Cross-Validation Summary =====\n")
-    f.write(f"Avg Accuracy: {avg_acc:.4f}\n")
-    f.write(f"Avg Precision: {avg_pr:.4f}\n")
-    f.write(f"Avg Recall: {avg_rc:.4f}\n")
-    f.write(f"Avg F1: {avg_f1:.4f}\n")
+    f.write(f"Avg Accuracy: {all_acc:.4f}\n")
+    f.write(f"Avg Precision: {all_pr:.4f}\n")
+    f.write(f"Avg Recall: {all_rc:.4f}\n")
+    f.write(f"Avg F1: {all_f1:.4f}\n")
+    print(f"Total prediction time: {all_time:.4f} seconds")
+    print(f"Average latency per sample: {avg_latency:.4f} seconds/sample")
+    print(f"Throughput: {throughput:.2f} samples/second")
     f.write("Overall Report (concatenated predictions):\n")
-    f.write(overall_report + "\n")
+    f.write(all_report + "\n")
     f.write("Overall Confusion Matrix:\n")
-    f.write(str(overall_cm) + "\n")
+    f.write(str(all_cm) + "\n")
+
+pred_csv_path = f"all_true_pred_ckpt{best_epoch}.csv"
+pd.DataFrame({
+    "all_true": all_true,
+    "all_pred": all_pred,
+}).to_csv(pred_csv_path, index=False, encoding="utf-8")
