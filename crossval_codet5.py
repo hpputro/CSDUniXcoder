@@ -84,8 +84,15 @@ class CodeDataset(Dataset):
         }
 
 
+def extract_logits(predictions):
+    if isinstance(predictions, tuple):
+        predictions = predictions[0]
+    return predictions
+
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
+    logits = extract_logits(logits)
     preds = logits.argmax(axis=-1)
     accuracy = accuracy_score(labels, preds)
     precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
@@ -184,7 +191,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print(f"Training time for Fold {fold_idx}: {ttime:.2f} seconds")
 
     final_predictions = trainer.predict(val_dataset)
-    preds = np.argmax(final_predictions.predictions, axis=-1)
+    preds = np.argmax(extract_logits(final_predictions.predictions), axis=-1)
     true_labels = val_data['label'].values
     all_true.append(true_labels)
     all_pred.append(preds)
@@ -196,7 +203,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print(cm_val)
 
     train_preds = trainer.predict(train_dataset)
-    train_preds_labels = np.argmax(train_preds.predictions, axis=-1)
+    train_preds_labels = np.argmax(extract_logits(train_preds.predictions), axis=-1)
     train_true_labels = train_data['label'].values
     train_report = classification_report(train_true_labels, train_preds_labels, target_names=target_names, zero_division=0)
     cm_train = confusion_matrix(train_true_labels, train_preds_labels)
