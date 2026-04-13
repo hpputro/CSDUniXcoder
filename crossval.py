@@ -160,7 +160,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         learning_rate=1e-5,
         warmup_steps=50,
         lr_scheduler_type="cosine",
-        save_total_limit=5,
+        save_total_limit=7,
         fp16=torch.cuda.is_available(),
         report_to="none",
         seed=0

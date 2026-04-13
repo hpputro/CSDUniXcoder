@@ -3,14 +3,15 @@ print("import 1")
 import os
 import pandas as pd
 import numpy as np
+import sklearn.metrics as met
 import torch
-from torch.utils.data import Dataset
 import time
+from torch.utils.data import Dataset
 from datetime import datetime
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
-from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 1024
@@ -49,8 +50,11 @@ class CodeDataset(Dataset):
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     preds = logits.argmax(axis=-1)
-    accuracy = accuracy_score(labels, preds)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
+    
+    accuracy = met.accuracy_score(labels, preds)
+    precision = met.precision_score(labels, preds, zero_division=0)
+    recall =  met.recall_score(labels, preds, zero_division=0)
+    f1 = met.f1_score(labels, preds, zero_division=0)
     return {
         "accuracy": accuracy,
         "precision": precision,
@@ -83,22 +87,22 @@ all_fold = []
 fold_metrics = []
 target_names = ["0", "1"]
 
-best_epoch = 180
-log_path = f"output_log_ckpt{best_epoch}.txt"
+BEST_EPOCH = 150
+log_path = f"output_log_ckpt{BEST_EPOCH}.txt"
 run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
-    f.write(f"uniXCoder Checkpoint-{best_epoch} Inference over 5-Fold\n")
+    f.write(f"uniXCoder Checkpoint-{BEST_EPOCH} Inference over 5-Fold\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
     
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
-    print(f"\n===== Fold {fold_idx} / 5 Checkpoint {best_epoch} =====")
+    print(f"\n===== Fold {fold_idx} / 5 Checkpoint {BEST_EPOCH} =====")
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
     val_dataset = CodeDataset(val_data, tokenizer, device)
 
     # Locate fixed checkpoint-X for this fold
     fold_dir = os.path.join("results", f"fold_{fold_idx}")
-    ckpt_path = os.path.join(fold_dir, f"checkpoint-{best_epoch}")
+    ckpt_path = os.path.join(fold_dir, f"checkpoint-{BEST_EPOCH}")
     if not os.path.isdir(ckpt_path):
         raise FileNotFoundError(f"Expected checkpoint not found: {ckpt_path}.")
     print(f"Using checkpoint: {ckpt_path}")
@@ -112,7 +116,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     # Minimal training args for prediction only
-    pred_output_dir = os.path.join(fold_dir, f"pred_ckpt{best_epoch}")
+    pred_output_dir = os.path.join(fold_dir, f"pred_ckpt{BEST_EPOCH}")
     os.makedirs(pred_output_dir, exist_ok=True)
     training_args = TrainingArguments(
         output_dir=pred_output_dir,
@@ -152,8 +156,10 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
     print(cm_val)
 
-    pr, rc, f1, _ = precision_recall_fscore_support(true_labels, preds, average="weighted", zero_division=0)
-    acc = accuracy_score(true_labels, preds)
+    acc = met.accuracy_score(true_labels, preds)
+    pr = met.precision_score(true_labels, preds, zero_division=0)
+    rc =  met.recall_score(true_labels, preds, zero_division=0)
+    f1 = met.f1_score(true_labels, preds, zero_division=0)
     fold_metrics.append({
         "fold": fold_idx,
         "accuracy": acc,
@@ -171,17 +177,17 @@ all_fold = np.concatenate(all_fold)
 all_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
 all_cm = confusion_matrix(all_true, all_pred)
 
-all_acc = np.mean([m["accuracy"] for m in fold_metrics])
-all_pr = np.mean([m["precision"] for m in fold_metrics])
-all_rc = np.mean([m["recall"] for m in fold_metrics])
-all_f1 = np.mean([m["f1"] for m in fold_metrics])
+all_acc = met.accuracy_score(all_true, all_pred)
+all_pr = met.precision_score(all_true, all_pred, zero_division=0)
+all_rc =  met.recall_score(all_true, all_pred, zero_division=0)
+all_f1 = met.f1_score(all_true, all_pred, zero_division=0)
 
 all_ns = np.sum([m["nsamples"] for m in fold_metrics])
 all_time = np.sum([m["time"] for m in fold_metrics])
 avg_latency = all_time / all_ns
 throughput = all_ns / all_time
 
-print(f"\n===== Checkpoint-{best_epoch} Cross-Validation Summary =====")
+print(f"\n===== Checkpoint-{BEST_EPOCH} Cross-Validation Summary =====")
 print(f"Avg Accuracy: {all_acc:.4f}")
 print(f"Avg Precision: {all_pr:.4f}")
 print(f"Avg Recall: {all_rc:.4f}")
@@ -194,7 +200,7 @@ print("Overall Confusion Matrix:")
 print(all_cm)
 
 with open(log_path, "a", encoding="utf-8") as f:
-    f.write(f"\n===== Checkpoint-{best_epoch} Cross-Validation Summary =====\n")
+    f.write(f"\n===== Checkpoint-{BEST_EPOCH} Cross-Validation Summary =====\n")
     f.write(f"Avg Accuracy: {all_acc:.4f}\n")
     f.write(f"Avg Precision: {all_pr:.4f}\n")
     f.write(f"Avg Recall: {all_rc:.4f}\n")
@@ -207,7 +213,7 @@ with open(log_path, "a", encoding="utf-8") as f:
     f.write("Overall Confusion Matrix:\n")
     f.write(str(all_cm) + "\n")
 
-pred_csv_path = f"all_true_pred_ckpt{best_epoch}.csv"
+pred_csv_path = f"all_true_pred_ckpt{BEST_EPOCH}.csv"
 pd.DataFrame({
     "all_fold": all_fold,
     "all_true": all_true,
