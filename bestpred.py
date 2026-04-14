@@ -47,10 +47,16 @@ class CodeDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long).to(self.device)
         }
 
+def extract_logits(predictions):
+    if isinstance(predictions, tuple):
+        predictions = predictions[0]
+    return predictions
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
+    logits = extract_logits(logits)
     preds = logits.argmax(axis=-1)
-    
+
     accuracy = met.accuracy_score(labels, preds)
     precision = met.precision_score(labels, preds, zero_division=0)
     recall =  met.recall_score(labels, preds, zero_division=0)
@@ -77,7 +83,7 @@ dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/unixcoder-base"
+model_name = "Salesforce/codet5-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 print("Device: " + device + "\n")
 
@@ -87,7 +93,7 @@ all_fold = []
 fold_metrics = []
 target_names = ["0", "1"]
 
-BEST_EPOCH = 150
+BEST_EPOCH = 180
 log_path = f"output_log_ckpt{BEST_EPOCH}.txt"
 run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
@@ -143,7 +149,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     throughput = ns / total_pred_time
     print(f"Fold {fold_idx}: {total_pred_time:.4f} s, {avg_latency:.6f} s/sample, {throughput:.2f} samples/s")
 
-    preds = np.argmax(final_predictions.predictions, axis=-1)
+    preds = np.argmax(extract_logits(final_predictions.predictions), axis=-1)
     true_labels = val_data['label'].values
     all_true.append(true_labels)
     all_pred.append(preds)

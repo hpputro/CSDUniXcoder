@@ -2,6 +2,7 @@
 print("import 1")
 import pandas as pd
 import numpy as np
+import sklearn.metrics as met
 import torch
 from torch.utils.data import Dataset
 import os
@@ -10,10 +11,11 @@ from datetime import datetime
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
-from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 1024
+MAX_LENGTH: int = 512
+MODEL_NAME: str = "microsoft/graphcodebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
 
@@ -46,8 +48,9 @@ class TrainMetricsCallback(TrainerCallback):
             with torch.no_grad():
                 outputs = model(**inputs)
             logits = outputs.logits
+            
             preds = torch.argmax(logits, dim=-1)
-            acc = accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
+            acc = met.accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
             logs["train_accuracy"] = acc
             if was_training:
                 model.train()
@@ -83,11 +86,20 @@ class CodeDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long).to(self.device)
         }
 
+def extract_logits(predictions):
+    if isinstance(predictions, tuple):
+        predictions = predictions[0]
+    return predictions
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
+    logits = extract_logits(logits)
     preds = logits.argmax(axis=-1)
-    accuracy = accuracy_score(labels, preds)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
+
+    accuracy = met.accuracy_score(labels, preds)
+    precision = met.precision_score(labels, preds, zero_division=0)
+    recall =  met.recall_score(labels, preds, zero_division=0)
+    f1 = met.f1_score(labels, preds, zero_division=0)
     return {
         "accuracy": accuracy,
         "precision": precision,
@@ -110,8 +122,7 @@ dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "microsoft/unixcoder-base"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 print("Device: "+device+"\n")
 
 all_true = []
@@ -144,7 +155,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     train_dataset = CodeDataset(train_data, tokenizer, device)
     val_dataset = CodeDataset(val_data, tokenizer, device)
     model = AutoModelForSequenceClassification.from_pretrained(
-        model_name, num_labels=2, problem_type="single_label_classification"
+        MODEL_NAME, num_labels=2, problem_type="single_label_classification"
     )
     model.to(device)
 
@@ -184,31 +195,16 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 
     # Validation predictions for this fold
     final_predictions = trainer.predict(val_dataset)
-    preds = np.argmax(final_predictions.predictions, axis=-1)
+    preds = np.argmax(extract_logits(final_predictions.predictions), axis=-1)
     true_labels = val_data['label'].values
     all_true.append(true_labels)
     all_pred.append(preds)
 
-    # Per-fold report
-    val_report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
-    cm_val = confusion_matrix(true_labels, preds)
-    print(f"Validation Report (Fold {fold_idx})\n{val_report}")
-    print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
-    print(cm_val)
-
-    # Evaluate on train set per fold
-    train_preds = trainer.predict(train_dataset)
-    train_preds_labels = np.argmax(train_preds.predictions, axis=-1)
-    train_true_labels = train_data['label'].values
-    train_report = classification_report(train_true_labels, train_preds_labels, target_names=target_names, zero_division=0)
-    cm_train = confusion_matrix(train_true_labels, train_preds_labels)
-    print(f"Training Report (Fold {fold_idx})\n{train_report}")
-    print("Training Confusion Matrix (Fold {}):".format(fold_idx))
-    print(cm_train)
-
     # Store summary metrics for averaging
-    pr, rc, f1, _ = precision_recall_fscore_support(true_labels, preds, average="weighted", zero_division=0)
-    acc = accuracy_score(true_labels, preds)
+    acc = met.accuracy_score(true_labels, preds)
+    pr = met.precision_score(true_labels, preds, zero_division=0)
+    rc =  met.recall_score(true_labels, preds, zero_division=0)
+    f1 = met.f1_score(true_labels, preds, zero_division=0)
     fold_metrics.append({
         "fold": fold_idx,
         "accuracy": acc,
@@ -217,6 +213,25 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         "f1": f1,
         "train_time": ttime
     })
+
+    # Per-fold report
+    val_report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
+    cm_val = confusion_matrix(true_labels, preds)
+    print(f"Validation Report (Fold {fold_idx})\n{val_report}")
+    print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
+    print(cm_val)
+    f.write("Validation Confusion Matrix (Fold {}):".format(fold_idx))
+    f.write(str(cm_val) + "\n")
+
+    # Evaluate on train set per fold
+    train_preds = trainer.predict(train_dataset)
+    train_preds_labels = np.argmax(extract_logits(train_preds.predictions), axis=-1)
+    train_true_labels = train_data['label'].values
+    train_report = classification_report(train_true_labels, train_preds_labels, target_names=target_names, zero_division=0)
+    cm_train = confusion_matrix(train_true_labels, train_preds_labels)
+    print(f"Training Report (Fold {fold_idx})\n{train_report}")
+    print("Training Confusion Matrix (Fold {}):".format(fold_idx))
+    print(cm_train)
 
 # Aggregate across all folds
 all_true = np.concatenate(all_true)

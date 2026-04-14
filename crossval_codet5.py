@@ -2,6 +2,7 @@
 print("import 1")
 import pandas as pd
 import numpy as np
+import sklearn.metrics as met
 import torch
 from torch.utils.data import Dataset
 import os
@@ -10,7 +11,7 @@ from datetime import datetime
 
 print("import 2")
 from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelForSequenceClassification
-from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 1024
@@ -47,7 +48,7 @@ class TrainMetricsCallback(TrainerCallback):
                 outputs = model(**inputs)
             logits = outputs.logits
             preds = torch.argmax(logits, dim=-1)
-            acc = accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
+            acc = met.accuracy_score(labels.cpu().numpy(), preds.cpu().numpy())
             logs["train_accuracy"] = acc
             if was_training:
                 model.train()
@@ -83,7 +84,6 @@ class CodeDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long).to(self.device)
         }
 
-
 def extract_logits(predictions):
     if isinstance(predictions, tuple):
         predictions = predictions[0]
@@ -94,8 +94,11 @@ def compute_metrics(eval_pred):
     logits, labels = eval_pred
     logits = extract_logits(logits)
     preds = logits.argmax(axis=-1)
-    accuracy = accuracy_score(labels, preds)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
+
+    accuracy = met.accuracy_score(labels, preds)
+    precision = met.precision_score(labels, preds, zero_division=0)
+    recall =  met.recall_score(labels, preds, zero_division=0)
+    f1 = met.f1_score(labels, preds, zero_division=0)
     return {
         "accuracy": accuracy,
         "precision": precision,
@@ -211,8 +214,10 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print("Training Confusion Matrix (Fold {}):".format(fold_idx))
     print(cm_train)
 
-    pr, rc, f1, _ = precision_recall_fscore_support(true_labels, preds, average="weighted", zero_division=0)
-    acc = accuracy_score(true_labels, preds)
+    pr = met.precision_score(true_labels, preds, zero_division=0)
+    rc = met.recall_score(true_labels, preds, zero_division=0)
+    f1 = met.f1_score(true_labels, preds, zero_division=0)
+    acc = met.accuracy_score(true_labels, preds)
     fold_metrics.append({
         "fold": fold_idx,
         "accuracy": acc,
