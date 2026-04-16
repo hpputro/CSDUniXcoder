@@ -3,6 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import auc, precision_recall_curve, roc_curve
 
 def extract_from_json(json_path):
     with open(json_path, 'r') as f:
@@ -237,6 +238,36 @@ def get_file(files):
             dfs.append(extract_from_json(file))
     return dfs
 
+def ROCCurve(y_true, y_pred):
+    fpr, tpr, _ = roc_curve(y_true, y_pred)
+    roc_auc = auc(fpr, tpr)
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr, label=f'ROC (AUC = {roc_auc:.3f})')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve')
+    plt.legend()
+    plt.show()
+
+def PrecisionRecallCurve(y_true, y_pred):
+    precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    plt.subplot(1, 2, 2)
+    plt.plot(recall, precision, label='PR Curve')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+df = pd.read_csv('all_true_pred_ckpt150.csv')
+y_true = df['all_true'].values
+y_pred = df['all_pred'].values
+ROCCurve(y_true, y_pred)
+PrecisionRecallCurve(y_true, y_pred)
+
 df_lr = [
     "remote/250822a_76.txt",
     "remote/250730b_77.txt",
@@ -274,14 +305,14 @@ df_fold = [
     "remote/251005f5_79.txt",
 ]
 
-#dfs = get_file(df_fold)
+dfs = get_file(df_fold)
 #plot_over(dfs, 'train_accuracy')
 #plot_over(dfs, 'eval_accuracy')
 #plot_over(dfs, 'loss')
 #plot_over(dfs, 'eval_loss')
 
 df = extract_from_json("trainer_state.json")
-plot_trainval(df)
+#plot_trainval(df)
 
 confusion_values = [
     [84, 12],
