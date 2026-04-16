@@ -130,7 +130,8 @@ all_pred = []
 fold_metrics = []
 target_names=["0", "1"]
 
-log_path = "output_log_crossval.txt"
+model_name_clean = MODEL_NAME.split('/')[-1]
+log_path = f"log_{model_name_clean}_crossval.txt"
 run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"{MODEL_NAME} {SPLIT}-Fold Cross-Validation Results\n")

@@ -18,7 +18,7 @@ MAX_LENGTH: int = 512
 MODEL_NAME: str = "microsoft/graphcodebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
-BEST_EPOCH = 180
+BEST_EPOCH = 119
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -91,6 +91,7 @@ print("Device: " + device + "\n")
 
 all_true = []
 all_pred = []
+all_prob = []
 all_fold = []
 fold_metrics = []
 target_names = ["0", "1"]
@@ -151,10 +152,15 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     throughput = ns / total_pred_time
     print(f"Fold {fold_idx}: {total_pred_time:.4f} s, {avg_latency:.6f} s/sample, {throughput:.2f} samples/s")
 
+    logits_tensor = torch.tensor(extract_logits(final_predictions.predictions))
+    probs = torch.nn.functional.softmax(logits_tensor, dim=-1).numpy()
+    y_scores = probs[:, 1]
+    
     preds = np.argmax(extract_logits(final_predictions.predictions), axis=-1)
     true_labels = val_data['label'].values
     all_true.append(true_labels)
     all_pred.append(preds)
+    all_prob.append(y_scores)
     all_fold.append(np.full(len(true_labels), fold_idx))
 
     # Per-fold report
@@ -181,6 +187,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 # Aggregate across all folds
 all_true = np.concatenate(all_true)
 all_pred = np.concatenate(all_pred)
+all_prob = np.concatenate(all_prob)
 all_fold = np.concatenate(all_fold)
 all_report = classification_report(all_true, all_pred, target_names=target_names, zero_division=0)
 all_cm = confusion_matrix(all_true, all_pred)
@@ -225,5 +232,5 @@ pred_csv_path = f"truepred_{model_name_clean}_ckpt{BEST_EPOCH}.csv"
 pd.DataFrame({
     "all_fold": all_fold,
     "all_true": all_true,
-    "all_pred": all_pred
+    "all_pred": all_prob
 }).to_csv(pred_csv_path, index=False, encoding="utf-8")
