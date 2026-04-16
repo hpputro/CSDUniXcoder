@@ -14,8 +14,8 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 512
-MODEL_NAME: str = "microsoft/graphcodebert-base"
+MAX_LENGTH: int = 1024
+MODEL_NAME: str = "microsoft/unixcoder-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
 
@@ -139,7 +139,7 @@ with open(log_path, "w", encoding="utf-8") as f:
 
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
-    print(f"\n===== Fold {fold_idx} / {SPLIT} =====")
+    print(f"\n===== Fold {fold_idx} / {SPLIT} {MODEL_NAME} =====")
     train_data = dataset.iloc[train_idx].reset_index(drop=True)
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
 
@@ -172,7 +172,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         learning_rate=1e-5,
         warmup_steps=50,
         lr_scheduler_type="cosine",
-        save_total_limit=5,
+        save_total_limit=7,
         fp16=torch.cuda.is_available(),
         report_to="none",
         seed=0

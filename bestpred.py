@@ -105,7 +105,7 @@ with open(log_path, "w", encoding="utf-8") as f:
 
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
-    print(f"\n===== Fold {fold_idx} / {SPLIT} Checkpoint {BEST_EPOCH} =====")
+    print(f"\n===== Fold {fold_idx} / {SPLIT} {MODEL_NAME} Checkpoint {BEST_EPOCH} =====")
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
     val_dataset = CodeDataset(val_data, tokenizer, device)
 
