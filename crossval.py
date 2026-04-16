@@ -133,7 +133,7 @@ target_names=["0", "1"]
 log_path = "output_log_crossval.txt"
 run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
-    f.write(f"uniXCoder {SPLIT}-Fold Cross-Validation Results\n")
+    f.write(f"{MODEL_NAME} {SPLIT}-Fold Cross-Validation Results\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
 
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
@@ -171,7 +171,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         learning_rate=1e-5,
         warmup_steps=50,
         lr_scheduler_type="cosine",
-        save_total_limit=7,
+        save_total_limit=5,
         fp16=torch.cuda.is_available(),
         report_to="none",
         seed=0
@@ -220,8 +220,9 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     print(f"Validation Report (Fold {fold_idx})\n{val_report}")
     print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
     print(cm_val)
-    f.write("Validation Confusion Matrix (Fold {}):".format(fold_idx))
-    f.write(str(cm_val) + "\n")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write("Validation Confusion Matrix (Fold {}): \n".format(fold_idx))
+        f.write(str(cm_val) + "\n")
 
     # Evaluate on train set per fold
     train_preds = trainer.predict(train_dataset)

@@ -14,8 +14,11 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 1024
+MAX_LENGTH: int = 512
+MODEL_NAME: str = "microsoft/graphcodebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
+SPLIT: int = 5
+BEST_EPOCH = 180
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -83,8 +86,7 @@ dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model_name = "Salesforce/codet5-base"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 print("Device: " + device + "\n")
 
 all_true = []
@@ -93,16 +95,16 @@ all_fold = []
 fold_metrics = []
 target_names = ["0", "1"]
 
-BEST_EPOCH = 180
-log_path = f"output_log_ckpt{BEST_EPOCH}.txt"
+model_name_clean = MODEL_NAME.split('/')[-1]
+log_path = f"log_{model_name_clean}_ckpt{BEST_EPOCH}.txt"
 run_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 with open(log_path, "w", encoding="utf-8") as f:
-    f.write(f"uniXCoder Checkpoint-{BEST_EPOCH} Inference over 5-Fold\n")
+    f.write(f"{MODEL_NAME} Checkpoint-{BEST_EPOCH} Inference over {SPLIT}-Fold\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
-    
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+
+skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
-    print(f"\n===== Fold {fold_idx} / 5 Checkpoint {BEST_EPOCH} =====")
+    print(f"\n===== Fold {fold_idx} / {SPLIT} Checkpoint {BEST_EPOCH} =====")
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
     val_dataset = CodeDataset(val_data, tokenizer, device)
 
@@ -119,7 +121,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
     try:
         tokenizer = AutoTokenizer.from_pretrained(ckpt_path)
     except Exception:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     # Minimal training args for prediction only
     pred_output_dir = os.path.join(fold_dir, f"pred_ckpt{BEST_EPOCH}")
@@ -219,7 +221,7 @@ with open(log_path, "a", encoding="utf-8") as f:
     f.write("Overall Confusion Matrix:\n")
     f.write(str(all_cm) + "\n")
 
-pred_csv_path = f"all_true_pred_ckpt{BEST_EPOCH}.csv"
+pred_csv_path = f"truepred_{model_name_clean}_ckpt{BEST_EPOCH}.csv"
 pd.DataFrame({
     "all_fold": all_fold,
     "all_true": all_true,
