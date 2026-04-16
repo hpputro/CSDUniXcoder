@@ -1,24 +1,32 @@
 import numpy as np
+import pandas as pd
 from scipy.stats import wilcoxon
 
-# --- 1. Masukkan Data Akurasi per Fold ---
-# UniXcoder (U) adalah model yang diuji
-unixcoder_scores = np.array([0.692, 0.872, 0.868, 0.789, 0.789])
+df = pd.read_csv('all_fold_method.csv')
+df.columns = df.columns.str.strip()
 
-# Baseline Models (B)
-j48_scores = np.array([0.7838, 0.7297, 0.6757, 0.6111, 0.7500])
-nb_scores = np.array([0.6486, 0.6216, 0.7027, 0.6111, 0.6667])
-svm_scores = np.array([0.7568, 0.7297, 0.6486, 0.6111, 0.8056])
-rf_scores = np.array([0.8378, 0.7297, 0.7568, 0.8611, 0.6944])
-lr_scores = np.array([0.7568, 0.6757, 0.7568, 0.7500, 0.7222])
+# Extract data per metode
+def get_scores_by_method(df, method_name):
+    """Extract akurasi scores untuk metode tertentu, diurutkan per fold"""
+    method_data = df[df['method'] == method_name].sort_values('fold')
+    return np.array(method_data['accuracy'].values)
+
+unixcoder_scores = get_scores_by_method(df, 'UniXcoder')
+j48_scores = get_scores_by_method(df, 'J48 Decision Tree')
+nb_scores = get_scores_by_method(df, 'Naive Bayes')
+svm_scores = get_scores_by_method(df, 'SVM')
+rf_scores = get_scores_by_method(df, 'Random Forest')
+lr_scores = get_scores_by_method(df, 'Logistic Regression')
+gcb_scores = get_scores_by_method(df, 'GraphCodeBERT')
 
 # Daftar perbandingan yang akan diuji
 comparisons = [
-    ("UniXcoder vs J48 Decision Tree", j48_scores),
-    ("UniXcoder vs Naive Bayes", nb_scores),
-    ("UniXcoder vs SVM", svm_scores),
-    ("UniXcoder vs Random Forest", rf_scores),
-    ("UniXcoder vs Logistic Regression", lr_scores),
+    ("VS J48 Decision Tree", j48_scores),
+    ("VS Naive Bayes", nb_scores),
+    ("VS SVM", svm_scores),
+    ("VS Random Forest", rf_scores),
+    ("VS Logistic Regression", lr_scores),
+    ("VS GraphCodeBERT", gcb_scores),
 ]
 
 print("--- Hasil Uji Wilcoxon Signed-Rank Test (Akurasi) ---")

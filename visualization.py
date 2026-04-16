@@ -262,7 +262,7 @@ def PrecisionRecallCurve(y_true, y_pred):
     plt.tight_layout()
     plt.show()
 
-df = pd.read_csv('all_true_pred_ckpt150.csv')
+df = pd.read_csv('truepred_GraphCodeBERT.csv')
 y_true = df['all_true'].values
 y_pred = df['all_pred'].values
 ROCCurve(y_true, y_pred)
