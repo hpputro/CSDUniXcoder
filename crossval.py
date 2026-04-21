@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 1024
-MODEL_NAME: str = "microsoft/unixcoder-base"
+MODEL_NAME: str = "Salesforce/codet5-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
 
@@ -137,9 +137,14 @@ with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"{MODEL_NAME} {SPLIT}-Fold Cross-Validation Results\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
 
+START_FOLD = 2
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / {SPLIT} {MODEL_NAME} =====")
+    if fold_idx != 1:
+        print(f"Skipping fold {fold_idx}")
+        continue
+
     train_data = dataset.iloc[train_idx].reset_index(drop=True)
     val_data = dataset.iloc[val_idx].reset_index(drop=True)
 
