@@ -17,22 +17,35 @@ nb_scores = get_scores_by_method(df, 'Naive Bayes')
 svm_scores = get_scores_by_method(df, 'SVM')
 rf_scores = get_scores_by_method(df, 'Random Forest')
 lr_scores = get_scores_by_method(df, 'Logistic Regression')
+bow_scores = get_scores_by_method(df, 'BoW')
+tfidf_scores = get_scores_by_method(df, 'TFIDF')
+cb_scores = get_scores_by_method(df, 'CodeBERT')
 gcb_scores = get_scores_by_method(df, 'GraphCodeBERT')
+ct5_scores = get_scores_by_method(df, 'CodeT5')
 
 # Daftar perbandingan yang akan diuji
 comparisons = [
-    ("VS J48 Decision Tree", j48_scores),
     ("VS Naive Bayes", nb_scores),
+    ("VS J48 Decision Tree", j48_scores),
+    ("VS Logistic Regression", lr_scores),
     ("VS SVM", svm_scores),
     ("VS Random Forest", rf_scores),
-    ("VS Logistic Regression", lr_scores),
+    ("VS BoW", bow_scores),
+    ("VS TFIDF", tfidf_scores),
+    ("VS CodeBERT", cb_scores),
     ("VS GraphCodeBERT", gcb_scores),
+    ("VS CodeT5", ct5_scores),
 ]
 
 print("--- Hasil Uji Wilcoxon Signed-Rank Test (Akurasi) ---")
 alpha = 0.05
+results = []
 
 for name, baseline_scores in comparisons:
+    mean_unixcoder = np.mean(unixcoder_scores)
+    mean_baseline = np.mean(baseline_scores)
+    improvement = ((mean_unixcoder - mean_baseline) / mean_baseline) * 100
+
     # --- 2. Lakukan Uji Wilcoxon ---
     # alternative='greater' menguji apakah UniXcoder > Baseline
     try:
@@ -48,14 +61,31 @@ for name, baseline_scores in comparisons:
         p_value = 1.0 
         statistic = np.nan
 
-    print(f"\n{name}:")
-    print(f"  Rata-Rata UniXcoder: {np.mean(unixcoder_scores):.4f}")
-    print(f"  Rata-Rata Baseline: {np.mean(baseline_scores):.4f}")
-    print(f"  Wilcoxon Statistic (W): {statistic:.4f}")
-    print(f"  P-Value (p): {p_value:.4f}")
-
-    # --- 3. Interpretasi Hasil ---
     if p_value < alpha:
-        print("  Keputusan: Peningkatan kinerja signifikan secara statistik (p < 0.05).")
+        decision = "Signifikan"
     else:
-        print("  Keputusan: Peningkatan kinerja TIDAK signifikan secara statistik (p >= 0.05).")
+        decision = "Tidak Signifikan"
+
+    results.append({
+        "Perbandingan": name,
+        "Rata-Rata UniXcoder": mean_unixcoder,
+        "Rata-Rata Baseline": mean_baseline,
+        "Improvement (%)": improvement,
+        "Wilcoxon Statistic (W)": statistic,
+        "P-Value (p)": p_value,
+        "Keputusan": decision,
+    })
+
+results_df = pd.DataFrame(results)
+print(
+    results_df.to_string(
+        index=False,
+        formatters={
+            "Rata-Rata UniXcoder": "{:.2f}".format,
+            "Rata-Rata Baseline": "{:.2f}".format,
+            "Improvement (%)": "{:.1f}".format,
+            "Wilcoxon Statistic (W)": lambda x: f"{x:.1f}" if pd.notna(x) else "NaN",
+            "P-Value (p)": "{:.3f}".format,
+        },
+    )
+)

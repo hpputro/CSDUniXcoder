@@ -238,35 +238,63 @@ def get_file(files):
             dfs.append(extract_from_json(file))
     return dfs
 
-def ROCCurve(y_true, y_pred):
-    fpr, tpr, _ = roc_curve(y_true, y_pred)
-    roc_auc = auc(fpr, tpr)
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(fpr, tpr, label=f'ROC (AUC = {roc_auc:.3f})')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.legend()
-    plt.show()
-
-def PrecisionRecallCurve(y_true, y_pred):
-    precision, recall, _ = precision_recall_curve(y_true, y_pred)
-    plt.subplot(1, 2, 2)
-    plt.plot(recall, precision, label='PR Curve')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend()
+def ROCCurve(data_dict):
+    """Plot ROC Curves for multiple models in one chart"""
+    fig, ax = plt.subplots(figsize=(8, 8))    
+    colors = [ '#8C3A3A', '#e8bcbc', '#e3d6b0', '#bfe0cc', '#a9c9da','#d2b3db']
+    
+    for idx, (model_name, (y_true, y_pred)) in enumerate(data_dict.items()):
+        fpr, tpr, _ = roc_curve(y_true, y_pred)
+        roc_auc = auc(fpr, tpr)
+        ax.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.3f})', linewidth=2, color=colors[idx % len(colors)])
+    
+    ax.plot([0, 1], [0, 1], 'k--', label='Random Guess (AUC = 0.5)')
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('ROC Curve Comparison')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
 
-df = pd.read_csv('truepred_GraphCodeBERT.csv')
-y_true = df['all_true'].values
-y_pred = df['all_pred'].values
-ROCCurve(y_true, y_pred)
-PrecisionRecallCurve(y_true, y_pred)
+def PrecisionRecallCurve(data_dict):
+    """Plot Precision-Recall Curves for multiple models in one chart"""
+    fig, ax = plt.subplots(figsize=(8, 8))
+    colors = [ '#8C3A3A', '#e8bcbc', '#e3d6b0', '#bfe0cc', '#a9c9da','#d2b3db']
+    
+    for idx, (model_name, (y_true, y_pred)) in enumerate(data_dict.items()):
+        precision, recall, _ = precision_recall_curve(y_true, y_pred)
+        pr_auc = auc(recall, precision)
+        ax.plot(recall, precision, label=f'{model_name} (AUC = {pr_auc:.3f})', linewidth=2, color=colors[idx % len(colors)])
+    
+    ax.axhline(y=0.5, color='k', linestyle='--', label='Baseline (Precision = 0.5)')
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title('Precision-Recall Curve Comparison')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+df_truepred = [
+    "truepred_UniXcoder.csv",
+    "truepred_BoW.csv",
+    "truepred_TF-IDF.csv",
+    "truepred_CodeBERT.csv",
+    "truepred_GraphCodeBERT.csv",
+    "truepred_CodeT5.csv",
+]
+
+# Load all truepred data and prepare for comparison
+data_dict = {}
+for file in df_truepred:
+    df = pd.read_csv(file)
+    model_name = file.replace("truepred_", "").replace(".csv", "")
+    data_dict[model_name] = (df['all_true'].values, df['all_pred'].values)
+
+# Plot both models in one chart
+ROCCurve(data_dict)
+PrecisionRecallCurve(data_dict)
 
 df_lr = [
     "remote/250822a_76.txt",
@@ -311,7 +339,7 @@ dfs = get_file(df_fold)
 #plot_over(dfs, 'loss')
 #plot_over(dfs, 'eval_loss')
 
-df = extract_from_json("trainer_state.json")
+#df = extract_from_json("trainer_state.json")
 #plot_trainval(df)
 
 confusion_values = [
