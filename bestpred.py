@@ -14,8 +14,8 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 1024
-MODEL_NAME: str = "Salesforce/codet5-base"
+MAX_LENGTH: int = 512
+MODEL_NAME: str = "microsoft/codebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
 BEST_EPOCH = 140
