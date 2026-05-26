@@ -1,0 +1,3 @@
+public boolean getAutoRangeStickyZero() {
+        return this.autoRangeStickyZero;
+    }
