@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 512
-MODEL_NAME: str = "microsoft/codebert-base"
+MODEL_NAME: str = "microsoft/graphcodebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
 
@@ -117,7 +117,7 @@ set_seed(0)
 
 # Load dataset
 dataset = pd.read_csv(FILEDS)
-dataset = dataset[dataset['length'] < MAX_LENGTH]
+#dataset = dataset[dataset['length'] < MAX_LENGTH]
 dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
@@ -137,11 +137,11 @@ with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"{MODEL_NAME} {SPLIT}-Fold Cross-Validation Results\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
 
-START_FOLD = 1
+FOLD = [1]
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / {SPLIT} {MODEL_NAME} =====")
-    if fold_idx < START_FOLD:
+    if fold_idx not in FOLD:
         print(f"Skipping fold {fold_idx}")
         continue
 
@@ -191,6 +191,11 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
         compute_metrics=compute_metrics,
         callbacks=[TrainMetricsCallback()]
     )
+
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total: {total_params:,}")
+    print(f"Trainable: {trainable_params:,}")
 
     print("Training Fold", fold_idx)
     train_start_time = time.time()

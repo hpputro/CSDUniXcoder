@@ -15,10 +15,10 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
 MAX_LENGTH: int = 512
-MODEL_NAME: str = "microsoft/codebert-base"
+MODEL_NAME: str = "microsoft/graphcodebert-base"
 FILEDS: str = 'switch_statements_1024.csv'
 SPLIT: int = 5
-BEST_EPOCH = 140
+BEST_EPOCH = 170
 
 class CodeDataset(Dataset):
     def __init__(self, dataframe, tokenizer, device):
@@ -81,7 +81,7 @@ set_seed(0)
 
 # Load dataset and build folds identical to training
 dataset = pd.read_csv(FILEDS)
-dataset = dataset[dataset['length'] < MAX_LENGTH]
+#dataset = dataset[dataset['length'] < MAX_LENGTH]
 dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
@@ -165,15 +165,17 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 
     # Per-fold report
     val_report = classification_report(true_labels, preds, target_names=target_names, zero_division=0)
+    acc = met.accuracy_score(true_labels, preds)
+    pr = met.precision_score(true_labels, preds, zero_division=0)
+    rc =  met.recall_score(true_labels, preds, zero_division=0)
+    f1 = met.f1_score(true_labels, preds, zero_division=0)
+    print(f"Fold {fold_idx}: {acc:.4f},{pr:.4f},{rc:.4f},{f1:.4f} \n")
+    
     cm_val = confusion_matrix(true_labels, preds)
     print(f"Validation Report (Fold {fold_idx})\n{val_report}")
     print("Validation Confusion Matrix (Fold {}):".format(fold_idx))
     print(cm_val)
 
-    acc = met.accuracy_score(true_labels, preds)
-    pr = met.precision_score(true_labels, preds, zero_division=0)
-    rc =  met.recall_score(true_labels, preds, zero_division=0)
-    f1 = met.f1_score(true_labels, preds, zero_division=0)
     fold_metrics.append({
         "fold": fold_idx,
         "accuracy": acc,
