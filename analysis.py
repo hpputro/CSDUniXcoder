@@ -1,9 +1,12 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 print("start importing libraries")
 import pandas as pd
 import numpy as np
 import torch
-print("importing libraries") 
+print("importing libraries")
 import matplotlib.pyplot as plt
+from transformers import AutoTokenizer
 
 MAX_LENGTH: int = 1024
 FILEDS: str = 'switch_statements_1024.csv'
@@ -40,15 +43,34 @@ class CodeDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long).to(self.device)
         }
 
-import random
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-set_seed(0)
+def list_newsrc_files(newsrc_dir="newsrc"):
+    files = []
+    for root, _, filenames in os.walk(newsrc_dir):
+        for fname in filenames:
+            rel_path = os.path.relpath(os.path.join(root, fname), newsrc_dir)
+            files.append(rel_path.replace("\\", "/"))
+    return files
 
-import os
+def count_tokens_to_csv(model_name, newsrc_dir="newsrc", output_csv="token_counts.csv"):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    files = list_newsrc_files(newsrc_dir)
+    rows = []
+    for rel_path in files:
+        parts = rel_path.split("/", 1)
+        project = parts[0] if len(parts) == 2 else ""
+        filename = parts[1] if len(parts) == 2 else parts[0]
+        full_path = os.path.join(newsrc_dir, rel_path)
+        with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+            code = f.read()
+        token_len = len(tokenizer.encode(code, add_special_tokens=True))
+        loc = len(code.splitlines())
+        rows.append({"project": project, "filename": filename, "loc": loc, "token_length": token_len})
+        print(f"{project}/{filename} -> {loc} LoC, {token_len} tokens")
+    df = pd.DataFrame(rows, columns=["project", "filename", "loc", "token_length"])
+    df.to_csv(output_csv, index=False)
+    print(f"\nSaved {len(df)} entries to {output_csv}")
+    return df
+
 print("Current working directory:", os.getcwd())
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dataset = pd.read_csv(FILEDS)
@@ -67,57 +89,66 @@ counts, edges = np.histogram(dataset['length'], bins=bins)
 bin_centers = [(edges[i] + edges[i+1]) / 2 for i in range(len(edges)-1)]
 
 # Plot bar chart with vertical line at x=1024
-plt.figure(figsize=(10,6))
-plt.bar(bin_centers, counts, width=bin_size * 0.9, color='#81957F')
-plt.xlabel("Token Count")
-plt.ylabel("Number of Files")
-plt.title("File Count per 100 Token Range")
-xtick_vals = np.arange(200, max(bin_centers)+1, 200)
-xtick_labels = [str(int(v)) for v in xtick_vals]
-plt.xticks(xtick_vals, xtick_labels, rotation=45)
-plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
-plt.tight_layout()
-#plt.show()
-
+def plotbar_token_dist(bin_centers, counts):
+    plt.figure(figsize=(10,6))
+    plt.bar(bin_centers, counts, width=bin_size * 0.9, color='#81957F')
+    plt.xlabel("Token Count")
+    plt.ylabel("Number of Files")
+    plt.title("File Count per 100 Token Range")
+    xtick_vals = np.arange(200, max(bin_centers)+1, 200)
+    xtick_labels = [str(int(v)) for v in xtick_vals]
+    plt.xticks(xtick_vals, xtick_labels, rotation=45)
+    plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
+    plt.tight_layout()
+    plt.show()
 
 # Stacked bar chart for label distribution in train and validation sets
-label_names = {0: "Clean Code", 1: "Smell Code"}
-train_counts = train_data['label'].value_counts().sort_index()
-val_counts = val_data['label'].value_counts().sort_index()
-labels = [0, 1]
-bar_labels = [label_names.get(i, str(i)) for i in labels]
-train_bar = [train_counts.get(i, 0) for i in labels]
-val_bar = [val_counts.get(i, 0) for i in labels]
-plt.figure(figsize=(6,4))
-plt.bar(bar_labels, train_bar, color=['#2A3B36', '#2A3B36'], edgecolor='black', label='Train')
-plt.bar(bar_labels, val_bar, bottom=train_bar, color=['#D7EEC8', '#D7EEC8'], edgecolor='black', label='Validation')
-plt.xlabel("Label")
-plt.ylabel("Number of Samples")
-plt.title("Dataset Distribution: Clean Code vs Smell Code (Stacked Train/Val)")
-plt.legend()
-plt.tight_layout()
-#plt.show()
+def stackedbar_label_dist(train_data, val_data):
+    label_names = {0: "Clean Code", 1: "Smell Code"}
+    train_counts = train_data['label'].value_counts().sort_index()
+    val_counts = val_data['label'].value_counts().sort_index()
+    labels = [0, 1]
+    bar_labels = [label_names.get(i, str(i)) for i in labels]
+    train_bar = [train_counts.get(i, 0) for i in labels]
+    val_bar = [val_counts.get(i, 0) for i in labels]
+    plt.figure(figsize=(6,4))
+    plt.bar(bar_labels, train_bar, color=['#2A3B36', '#2A3B36'], edgecolor='black', label='Train')
+    plt.bar(bar_labels, val_bar, bottom=train_bar, color=['#D7EEC8', '#D7EEC8'], edgecolor='black', label='Validation')
+    plt.xlabel("Label")
+    plt.ylabel("Number of Samples")
+    plt.title("Dataset Distribution: Clean Code vs Smell Code (Stacked Train/Val)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 # Stacked histogram for token count (length) by label
-plt.figure(figsize=(7,4))
-bins = range(0, int(dataset['length'].max()) + 100, 100)
-labels = [0, 1]
-colors = ['#006699', '#E9BB7D']
-label_names = {0: "Clean Code", 1: "Smell Code"}
-data_by_label = [dataset[dataset['label'] == l]['length'] for l in labels]
-#plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
+def stackedhist_token_dist(dataset):
+    plt.figure(figsize=(7,4))
+    bins = range(0, int(dataset['length'].max()) + 100, 100)
+    labels = [0, 1]
+    colors = ['#006699', '#E9BB7D']
+    label_names = {0: "Clean Code", 1: "Smell Code"}
+    data_by_label = [dataset[dataset['label'] == l]['length'] for l in labels]
+    #plt.axvline(x=1024, color='gray', linestyle='dashed', linewidth=1)
 
-plt.hist(
-    data_by_label,
-    bins=bins,
-    stacked=True,
-    color=colors,
-    label=[label_names[l] for l in labels],
-    edgecolor='black'
-)
-plt.xlabel("Token Count (length)")
-plt.ylabel("Number of Samples")
-plt.title("Stacked Token Count Distribution per File by Label")
-plt.legend()
-plt.tight_layout()
-plt.show()
+    plt.hist(
+        data_by_label,
+        bins=bins,
+        stacked=True,
+        color=colors,
+        label=[label_names[l] for l in labels],
+        edgecolor='black'
+    )
+    plt.xlabel("Token Count (length)")
+    plt.ylabel("Number of Samples")
+    plt.title("Stacked Token Count Distribution per File by Label")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+#plotbar_token_dist(bin_centers, counts)
+#stackedbar_label_dist(train_data, val_data)
+#stackedhist_token_dist(dataset)
+
+MODEL_NAME: str = "microsoft/unixcoder-base"
+count_tokens_to_csv(MODEL_NAME, newsrc_dir="newsrc", output_csv="token_counts.csv")

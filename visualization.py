@@ -265,7 +265,7 @@ def PrecisionRecallCurve(data_dict):
     for idx, (model_name, (y_true, y_pred)) in enumerate(data_dict.items()):
         precision, recall, _ = precision_recall_curve(y_true, y_pred)
         pr_auc = auc(recall, precision)
-        ax.plot(recall, precision, label=f'{model_name} (AUC = {pr_auc:.3f})', linewidth=2, color=colors[idx % len(colors)])
+        ax.plot(recall, precision, label=f'{model_name}', linewidth=2, color=colors[idx % len(colors)])
     
     ax.axhline(y=0.5, color='k', linestyle='--', label='Baseline (Precision = 0.5)')
     ax.set_xlabel('Recall')
