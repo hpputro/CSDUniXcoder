@@ -14,9 +14,9 @@ from transformers import Trainer, TrainingArguments, AutoTokenizer, AutoModelFor
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-MAX_LENGTH: int = 512
-MODEL_NAME: str = "microsoft/graphcodebert-base"
-FILEDS: str = 'switch_statements_1024.csv'
+MAX_LENGTH: int = 1024
+MODEL_NAME: str = "microsoft/unixcoder-base"
+FILEDS: str = 'switch_statements_1024a.csv'
 SPLIT: int = 5
 
 from transformers import TrainerCallback
@@ -65,7 +65,7 @@ class CodeDataset(Dataset):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        file_path = "finalsrc/"+self.dataframe.iloc[idx]['filename']
+        file_path = "newsrc/"+self.dataframe.iloc[idx]['project']+"/"+self.dataframe.iloc[idx]['filename']
         label = self.dataframe.iloc[idx]['label']
 
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -118,7 +118,7 @@ set_seed(0)
 # Load dataset
 dataset = pd.read_csv(FILEDS)
 #dataset = dataset[dataset['length'] < MAX_LENGTH]
-dataset = dataset[['id', 'filename', 'label']].reset_index(drop=True)
+dataset = dataset[['id', 'project', 'filename', 'label']].reset_index(drop=True)
 print(dataset['label'].value_counts())
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -137,7 +137,8 @@ with open(log_path, "w", encoding="utf-8") as f:
     f.write(f"{MODEL_NAME} {SPLIT}-Fold Cross-Validation Results\n")
     f.write(f"Run Timestamp: {run_timestamp}\n")
 
-FOLD = [1]
+FOLD = [1,2,3,4,5]
+print(f"Running {SPLIT}-Fold Cross-Validation in {FOLD}")
 skf = StratifiedKFold(n_splits=SPLIT, shuffle=True, random_state=0)
 for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['label']), start=1):
     print(f"\n===== Fold {fold_idx} / {SPLIT} {MODEL_NAME} =====")
@@ -194,8 +195,7 @@ for fold_idx, (train_idx, val_idx) in enumerate(skf.split(dataset, dataset['labe
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total: {total_params:,}")
-    print(f"Trainable: {trainable_params:,}")
+    print(f"Trainable: {trainable_params:,}/{total_params:,}")
 
     print("Training Fold", fold_idx)
     train_start_time = time.time()
